@@ -7,7 +7,6 @@ from typing import Dict, Tuple, List
 
 from .archiver import MockArchiver
 from .cardano_sim import CardanoSimulator
-from .persistence import Persistence
 from .graph_store import GraphStore
 from .model import KripkeModel
 from .voting import Voter, Proposal, simulate_votes_random, evaluate_proposal
@@ -58,7 +57,6 @@ def run_single_proposal(
     approval_probability: float,
     participation_probability: float,
     voters: Dict[str, Voter],
-    persistence: Persistence | None = None,
 ):
     proposal = Proposal(proposal_id=proposal_id, from_world=from_world, to_world=to_world, quorum=quorum, threshold=threshold)
     votes = simulate_votes_random(voters, rng, approval_probability=approval_probability, participation_probability=participation_probability)
@@ -66,13 +64,9 @@ def run_single_proposal(
     if not result.passed:
         return None, result
     archiver = MockArchiver()
-    chain = CardanoSimulator(examples_dir, persistence=persistence)
-    if persistence is not None:
-        src_data = persistence.read_json(f"worlds/{from_world}.json") or {}
-        dst_data = persistence.read_json(f"worlds/{to_world}.json") or {}
-    else:
-        src_data = json.load(open(os.path.join(examples_dir, "worlds", f"{from_world}.json"), 'r', encoding='utf-8'))
-        dst_data = json.load(open(os.path.join(examples_dir, "worlds", f"{to_world}.json"), 'r', encoding='utf-8'))
+    chain = CardanoSimulator(examples_dir)
+    src_data = json.load(open(os.path.join(examples_dir, "worlds", f"{from_world}.json"), 'r', encoding='utf-8'))
+    dst_data = json.load(open(os.path.join(examples_dir, "worlds", f"{to_world}.json"), 'r', encoding='utf-8'))
     ar_src = archiver.upload_json(src_data)
     ar_dst = archiver.upload_json(dst_data)
     tx = chain.submit_transition(
