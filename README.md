@@ -65,6 +65,13 @@ Notes:
 - Streamlit Cloud’s filesystem is ephemeral; data may reset on redeploy/restart. This version intentionally uses JSON-only, no external DB.
 - Use the Overview tab’s “Initialize Example Graph” to (re)create example data.
 
+#### Useful Streamlit links
+- Streamlit Community Cloud (create app): https://share.streamlit.io
+- Deployment guide: https://docs.streamlit.io/streamlit-community-cloud/deploy-your-app
+- App entrypoint settings: https://docs.streamlit.io/streamlit-community-cloud/manage-your-app#edit-app-settings
+- Secrets management: https://docs.streamlit.io/streamlit-community-cloud/get-started/deploy-an-app/connect-to-data-sources/secrets-management
+- App sharing and updates: https://docs.streamlit.io/streamlit-community-cloud/manage-your-app#share-your-app
+
 ## Repository Layout
 
 - `sim/` – core simulation modules
