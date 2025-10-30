@@ -3,8 +3,12 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 
 import networkx as nx
+
+# Ensure project root is on path when running as a script
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from sim.graph_store import GraphStore
 from sim.model import KripkeModel, Transition

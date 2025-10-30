@@ -40,6 +40,21 @@ This generates `examples/graph.png` and `examples/timeline.png`.
 pytest -q
 ```
 
+## Streamlit Dashboard
+
+Launch the interactive dashboard (multi-tab UI):
+
+```bash
+streamlit run dashboard/streamlit_app.py
+```
+
+Tabs:
+- Overview: active world, transition count, init/reset actions
+- Configure & Run: set seed/quorum/threshold/voters/probabilities and run predefined or custom proposals
+- Graph: view the Kripke graph with active world highlighted
+- Timeline: view transition history and a table of recent transitions
+- Data: inspect and download JSON artifacts (`examples/`)
+
 ## Repository Layout
 
 - `sim/` – core simulation modules

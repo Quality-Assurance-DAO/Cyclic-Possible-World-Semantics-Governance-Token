@@ -4,8 +4,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import random
 from typing import Dict
+
+# Ensure project root is on path when running as a script
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from sim.archiver import MockArchiver
 from sim.cardano_sim import CardanoSimulator
