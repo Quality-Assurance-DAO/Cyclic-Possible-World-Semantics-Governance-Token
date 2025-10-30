@@ -48,10 +48,7 @@ def read_history():
 
 
 def reset_history():
-    path = os.path.join(examples_dir, "history.json")
-    if os.path.exists(path):
-        os.remove(path)
-    # Reset active
+    json.dump([], open(os.path.join(examples_dir, "history.json"), 'w', encoding='utf-8'))
     json.dump({"active_world": "w1", "last_tx": None, "updated_at": None}, open(os.path.join(examples_dir, "active_world.json"), 'w', encoding='utf-8'))
 
 

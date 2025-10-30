@@ -55,6 +55,16 @@ Tabs:
 - Timeline: view transition history and a table of recent transitions
 - Data: inspect and download JSON artifacts (`examples/`)
 
+### Deploy to Streamlit Community Cloud (JSON-only)
+
+1) Fork this repo on GitHub.
+2) In Streamlit Cloud, create a new app pointing to your fork and set the entrypoint to `dashboard/streamlit_app.py`.
+3) Deploy. The app reads/writes JSON under `examples/` on the app filesystem.
+
+Notes:
+- Streamlit Cloud’s filesystem is ephemeral; data may reset on redeploy/restart. This version intentionally uses JSON-only, no external DB.
+- Use the Overview tab’s “Initialize Example Graph” to (re)create example data.
+
 ## Repository Layout
 
 - `sim/` – core simulation modules
