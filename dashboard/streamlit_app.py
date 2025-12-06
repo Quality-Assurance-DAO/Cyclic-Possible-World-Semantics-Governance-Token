@@ -10,6 +10,13 @@ from typing import Dict
 
 import streamlit as st
 
+try:
+    import plotly.graph_objects as go
+    import plotly.express as px
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+
 # Ensure project root is importable
 ROOT = os.path.dirname(os.path.dirname(__file__))
 if ROOT not in sys.path:
@@ -99,57 +106,329 @@ def format_world_label(world_id: str, worlds: Dict = None) -> str:
     return world_id
 
 
-tab_overview, tab_run, tab_graph, tab_timeline, tab_data = st.tabs([
-    "Overview", "Configure & Run", "Graph", "Timeline", "Data",
+tab_about, tab_overview, tab_run, tab_graph, tab_timeline, tab_data = st.tabs([
+    "About CPWS", "Overview", "Configure & Run", "Graph", "Timeline", "Data",
 ])
 
 
-with tab_overview:
+with tab_about:
+    st.header("About Cyclic Possible World Semantics (CPWS)")
+    
     st.markdown(
         """
-        This dashboard simulates a cyclic possible-worlds governance model. Use the tabs to configure voters and thresholds, run proposals, and visualize the resulting state transitions.
-
+        This dashboard simulates a **Cyclic Possible World Semantics** governance system. 
+        This section explains the core concepts in novice-friendly language, establishing their real-world utility for DAO governance.
         """
     )
-    with st.expander("Key terms (what things mean)"):
-        st.markdown(
-            """
-            - **World**: An immutable governance configuration (node) identified by a `world_id` (e.g., `w1`). Each world represents a specific state of the DAO/protocol with defined rules, features, and parameters. Think of it as a snapshot of how the DAO is configured at a particular point in time.
-            
-            - **Transition**: A directed change from one world to another (edge), optionally cyclic. A transition represents a governance proposal that moves the system from one state to another.
-            
-            - **Active world**: The current world in effect; updated after a passed proposal (in simulation, stored in `examples/active_world.json`). This is the governance state currently in use.
-            
-            - **Kripke model**: A graph (worlds + edges) with a valuation of propositions that can be checked with modal operators. The model defines all possible states (worlds) and which transitions between them are allowed (accessibility relation). It provides a formal way to reason about what governance states are possible and which transitions are valid.
-            
-            - **Accessibility Relation**: The "rulebook" or "roadmap" that defines which state (World) can legally follow another. An edge from W1 to W2 means W2 is a possible transition from W1. This creates the graph structure showing all valid governance paths. Just like a roadmap shows which cities you can travel to from your current location, the accessibility relation shows which governance states you can transition to from your current state.
-            
-            - **Cyclic**: The system can revisit or correct past states. Governance is not a linear path; a DAO can always loop back to a previous configuration if needed, reflecting the philosophy of governance as a continuous loop. This means if a new governance change doesn't work out, the community can vote to revert to a previous, proven configuration.
-            
-            - **Quorum**: The minimum percentage of total voting weight that must participate for a vote to be considered valid. Example: 0.5 = 50% of all voters must participate. If quorum isn't met, the proposal fails regardless of how the votes are distributed. Lower values make it easier to meet the participation requirement.
-            
-            - **Approval threshold**: The minimum percentage of participating voting weight that must vote "for" to pass (e.g., 0.5 = simple majority). Requires strict majority (support > threshold), so a 50/50 tie fails when threshold is 0.5. Lower values make proposals easier to pass.
-            
-            - **□p (Necessary)**: True at world `w` if proposition `p` is true in all successors of `w`. Represents a requirement that must hold in all possible next states.
-            
-            - **◇p (Possible)**: True at world `w` if proposition `p` is true in at least one successor of `w`. Represents a possibility that can be achieved in some future state.
-            
-            - **Voter weight**: The voting power assigned to a voter (here, integers 1..N by default). Higher weight voters have more influence in the voting process.
-            
-            - **History**: The sequence of simulated transition transactions written to `examples/history.json`. This records all successful governance transitions with their vote counts, timestamps, and metadata.
-            """
-        )
+    
+    st.subheader("Core Concepts Explained")
+    
+    st.markdown("### Possible World")
+    st.info(
+        """
+        **A defined state or a future version of the DAO/protocol** (e.g., "World A has Feature X activated," "World B has Parameter Y set to 10").
+        
+        Each world represents a specific configuration of governance rules, features, and parameters. Think of it as a **snapshot of how the DAO is configured at a particular point in time**.
+        
+        **Real-world analogy**: Just like software can have different versions (v1.0, v2.0, v3.0), DAOs can have different governance configurations. Each world is like a tested, documented version that can be referenced and returned to.
+        """
+    )
+    
+    st.markdown("### Kripke Semantics / Accessibility Relation")
+    st.info(
+        """
+        **The "Rulebook" or "Roadmap" that defines which state (World) can legally follow another.**
+        
+        An edge from W1 to W2 means W2 is a possible transition from W1. This creates a graph structure showing all valid paths the governance system can take.
+        
+        **Real-world analogy**: Just like a roadmap shows which cities you can travel to from your current location, the accessibility relation shows which governance states you can transition to from your current state. Not every governance change should be possible from every state—the accessibility relation ensures that transitions follow logical rules and prevent invalid or dangerous state changes.
+        """
+    )
+    
+    st.markdown("### Cyclic")
+    st.info(
+        """
+        **The system can revisit or correct past states.**
+        
+        Governance is not a linear path; a DAO can always loop back to a previous configuration if needed, reflecting the philosophy of governance as a continuous loop.
+        
+        **Real-world analogy**: If a new governance change doesn't work out, the community can vote to revert to a previous, proven configuration. The cyclic structure acknowledges that governance is iterative and that sometimes going "backwards" is the right forward move. This supports governance flexibility—real systems need the ability to correct mistakes, revert changes, and iterate on solutions.
+        """
+    )
+    
+    st.divider()
+    
+    st.subheader("Why This Matters for Real-World DAO Governance")
+    
     col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        **📦 Version Control for Governance**
+        
+        Possible Worlds enable version control for governance. Just like software can have different versions, DAOs can have different governance configurations. Each world represents a tested, documented state that can be referenced and returned to.
+        """)
+    
+    with col2:
+        st.markdown("""
+        **📜 Constitutional Constraints**
+        
+        Accessibility Relations provide constitutional constraints. Not every governance change should be possible from every state. The accessibility relation ensures that transitions follow logical rules and prevent invalid or dangerous state changes.
+        """)
+    
+    with col3:
+        st.markdown("""
+        **🔄 Governance Flexibility**
+        
+        Cyclic structure supports governance flexibility. Real governance systems need the ability to correct mistakes, revert changes, and iterate on solutions. The cyclic model reflects this reality, allowing DAOs to learn from experience and adapt.
+        """)
+    
+    st.divider()
+    
+    st.subheader("How the Simulation Works")
+    
+    st.markdown("""
+    This simulation demonstrates how governance proposals can move a DAO through different possible worlds:
+    
+    1. **Start in a World**: The system begins in a base governance state (w1 - Base Governance)
+    2. **Propose Transitions**: Governance proposals attempt to move from one world to another (e.g., w1 → w2)
+    3. **Vote on Proposals**: Voters participate and vote "for" or "against" each proposal
+    4. **Check Requirements**: Proposals must meet two requirements:
+       - **Quorum**: Enough voting weight must participate
+       - **Approval Threshold**: Enough participating votes must be "for"
+    5. **Transition or Stay**: If both requirements are met, the active world changes. If not, the system stays in the current world
+    6. **Cycle Through Worlds**: The system can cycle through worlds, demonstrating the cyclic nature of possible world governance
+    """)
+    
+    st.divider()
+    
+    st.subheader("Key Terms Quick Reference")
+    
+    with st.expander("📚 Expand to see all key terms"):
+        st.markdown("""
+        - **World**: A governance configuration (node) identified by a `world_id` (e.g., `w1`). Each world has a name like "Base Governance" or "Quorum Enabled".
+        
+        - **Transition**: A directed change from one world to another (edge), optionally cyclic. A transition represents a governance proposal.
+        
+        - **Active World**: The current world in effect; updated after a passed proposal.
+        
+        - **Kripke Model**: A graph (worlds + edges) with a valuation of propositions. Defines all possible states and which transitions are allowed.
+        
+        - **Accessibility Relation**: The "rulebook" that defines which state can legally follow another. Creates the graph structure.
+        
+        - **Cyclic**: The system can revisit past states. Governance is not linear—it can loop back to previous configurations.
+        
+        - **Quorum**: The minimum percentage of total voting weight that must participate for a vote to be valid (e.g., 0.5 = 50%).
+        
+        - **Approval Threshold**: The minimum percentage of participating weight that must vote "for" to pass (e.g., 0.5 = simple majority). Requires strict majority (support > threshold).
+        
+        - **Proposal**: A governance action that attempts to transition from one world to another. Must pass quorum and threshold checks to succeed.
+        """)
+    
+    st.divider()
+    
+    st.markdown("""
+    **💡 Tip**: Start with the **Overview** tab to see the current state, then go to **Configure & Run** to experiment with different parameters and see how they affect proposal success rates.
+    """)
+
+
+with tab_overview:
+    st.header("📊 Dashboard Overview")
+    
+    st.markdown(
+        """
+        Welcome! This is your **guided tour** of the governance simulation dashboard. 
+        Let's start by understanding the two most important concepts: the **Active World** and **Transition Count**.
+        """
+    )
+    
+    st.divider()
+    
+    # Section 1: Active World
+    st.subheader("📍 Step 1: Understanding the Active World")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("""
+        **What is the Active World?**
+        
+        The **Active World** is the current governance state that is in effect right now. 
+        Think of it as the "current version" of your DAO's governance rules.
+        
+        **How it works:**
+        - When the simulation starts, the active world is **w1 (Base Governance)** by default
+        - When a governance proposal **passes** (meets quorum and threshold), the active world changes to the proposal's destination
+        - When a proposal **fails**, the active world stays the same
+        
+        **Why it matters:**
+        - Only proposals that match the active world can run (e.g., if active world is w2, only proposals starting from w2 can execute)
+        - The active world determines which governance rules are currently in effect
+        - You can see the active world highlighted in **yellow** in the Graph tab
+        """)
+    
+    with col2:
     active = read_active()
     history = read_history()
-    # Load worlds to get names for display
-    try:
-        _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
-        active_world_id = active.get("active_world", "w1")
-        active_world_label = format_world_label(active_world_id, worlds_dict)
-    except Exception:
-        active_world_label = active.get("active_world", "w1")
-    col1.metric("Active World", active_world_label)
+        # Load worlds to get names for display
+        try:
+            _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
+            active_world_id = active.get("active_world", "w1")
+            active_world_label = format_world_label(active_world_id, worlds_dict)
+        except Exception:
+            active_world_label = active.get("active_world", "w1")
+        
+        st.metric("🎯 Active World", active_world_label)
+        
+        # Show explanation based on active world
+        if active_world_id == "w1":
+            st.info("**Base Governance** - The starting state with minimal rules.")
+        elif active_world_id == "w2":
+            st.info("**Quorum Enabled** - Quorum requirements are now active.")
+        elif active_world_id == "w3":
+            st.info("**Delegated Governance** - Delegation features are enabled.")
+        elif active_world_id == "w4":
+            st.info("**Council Governance** - Council-based governance is active.")
+    
+    st.divider()
+    
+    # Section 2: Transition Count
+    st.subheader("🔄 Step 2: Understanding Transition Count")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("""
+        **What is a Transition?**
+        
+        A **transition** is a successful governance proposal that moved the system from one world to another.
+        Each time a proposal passes (meets quorum and threshold), it creates a transition.
+        
+        **How transitions work:**
+        1. A proposal attempts to move from World A → World B
+        2. Voters participate and vote "for" or "against"
+        3. If the proposal **passes** (quorum + threshold met), a transition occurs:
+           - The active world changes from A to B
+           - A transition record is added to the history
+           - The transition count increases by 1
+        4. If the proposal **fails**, no transition occurs (active world stays the same)
+        
+        **Why it matters:**
+        - Transition count shows how many successful governance changes have occurred
+        - Each transition represents a community decision that changed the governance state
+        - You can see all transitions in the **Timeline** tab
+        - The history of transitions shows the governance journey over time
+        """)
+    
+    with col2:
+        transition_count = len(history)
+        st.metric("📈 Total Transitions", transition_count)
+        
+        if transition_count == 0:
+            st.info("**No transitions yet.** Run a simulation in the **Configure & Run** tab to create transitions!")
+        elif transition_count == 1:
+            st.success(f"**1 transition** recorded. Check the Timeline tab to see it!")
+        else:
+            st.success(f"**{transition_count} transitions** recorded. The system has evolved through {transition_count} governance changes!")
+    
+    st.divider()
+    
+    # Section 3: Putting it Together
+    st.subheader("🔗 Step 3: How Active World and Transitions Work Together")
+    
+    st.markdown("""
+    **The Relationship:**
+    
+    - **Active World** = Where you are now
+    - **Transitions** = How you got here (the journey)
+    
+    **Example Journey:**
+    
+    1. **Start**: Active World = w1 (Base Governance), Transitions = 0
+    2. **Proposal 1 passes** (w1 → w2): 
+       - ✅ Transition created (Transitions = 1)
+       - ✅ Active World changes to w2 (Quorum Enabled)
+    3. **Proposal 2 passes** (w2 → w3):
+       - ✅ Transition created (Transitions = 2)
+       - ✅ Active World changes to w3 (Delegated Governance)
+    4. **Proposal 3 fails** (w3 → w4):
+       - ❌ No transition created (Transitions still = 2)
+       - ❌ Active World stays at w3 (no change)
+    5. **Proposal 4 passes** (w3 → w2):
+       - ✅ Transition created (Transitions = 3)
+       - ✅ Active World changes to w2 (back to Quorum Enabled)
+    
+    Notice how the system can go **backwards** (w3 → w2) - this is the **cyclic** nature of possible worlds!
+    """)
+    
+    # Show current state summary
+    st.divider()
+    st.subheader("📋 Current State Summary")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown(f"**Active World**\n\n{active_world_label}")
+    
+    with col2:
+        st.markdown(f"**Total Transitions**\n\n{transition_count}")
+    
+    with col3:
+        if transition_count > 0:
+            last_transition = history[-1]
+            from_world = last_transition.get("from_world", "?")
+            to_world = last_transition.get("to_world", "?")
+            try:
+                from_label = format_world_label(from_world, worlds_dict)
+                to_label = format_world_label(to_world, worlds_dict)
+            except:
+                from_label = from_world
+                to_label = to_world
+            st.markdown(f"**Last Transition**\n\n{from_label} → {to_label}")
+        else:
+            st.markdown("**Last Transition**\n\nNone yet")
+    
+    st.divider()
+    
+    # Quick actions
+    st.subheader("🚀 Quick Actions")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("🔄 Initialize Example Graph", use_container_width=True):
+            init_graph_script()
+            st.success("Initialized worlds and graph in examples/.")
+            st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
+            st.rerun()
+    
+    with col2:
+        if st.button("🗑️ Reset History", use_container_width=True):
+            reset_history()
+            # Verify reset worked - active world should always be w1 after reset
+            verify_active = read_active().get("active_world", "w1")
+            verify_history = read_history()
+            if verify_active == "w1" and len(verify_history) == 0:
+                st.success(f"Cleared history and reset active world to w1 (default initial state).")
+            else:
+                st.error(f"Reset may have failed. Active world: {verify_active} (expected w1), History entries: {len(verify_history)}")
+            st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
+            st.rerun()
+    
+    with col3:
+        st.markdown("**Next Steps:**\n\n1. Go to **Configure & Run** to run a simulation\n2. Check **Graph** tab to see the visual representation\n3. View **Timeline** to see transition history")
+    
+    st.divider()
+    
+    # Additional help
+    with st.expander("💡 Need More Help?"):
+        st.markdown("""
+        - **About CPWS Tab**: Learn about the core concepts and real-world utility
+        - **Configure & Run Tab**: Set parameters and run simulations
+        - **Graph Tab**: Visualize the Kripke model and see which worlds have been visited
+        - **Timeline Tab**: View the sequence of transitions over time
+        - **Data Tab**: Inspect raw JSON files and truth tables
+        """)
     col2.metric("Transitions", len(history))
     col3.metric("Last TX", active.get("last_tx") or "—")
 
@@ -218,16 +497,35 @@ with tab_run:
     # Guaranteed approval mode is outside form so it's accessible for custom proposals too
     guaranteed_approval = st.checkbox("Guaranteed approval mode", value=False,
                                      help="If enabled, all proposals that match the active world will automatically pass (bypasses voting). Useful for testing state transitions.")
+    # Display parameter info outside form so it's always visible
+    st.info("💡 **Tip**: Sliders use step 0.05 (5% increments). Values range from 0.0 (0%) to 1.0 (100%). The current value is displayed on each slider as you adjust it.")
+    
     with st.form("run_form"):
         seed = st.number_input("Seed", value=42, step=1, help="Random number generator seed for reproducible simulations. Different seeds produce different voting patterns.")
-        quorum = st.slider("Quorum", 0.0, 1.0, 0.5, 0.05, 
-                          help="The minimum percentage of total voting weight that must participate for a vote to be considered valid. Example: 0.5 = 50% of all voters must participate. Lower values make it easier to meet the participation requirement.")
-        threshold = st.slider("Approval threshold", 0.0, 1.0, 0.5, 0.05,
-                             help="The minimum percentage of participating voting weight that must vote 'for' to pass. Requires strict majority (support > threshold), so a 50/50 tie fails when threshold is 0.5. Lower values make proposals easier to pass.")
-        approval_prob = st.slider("Approval probability", 0.0, 1.0, 0.6, 0.05,
-                                 help="The probability that each participating voter will vote 'for' the proposal. Higher values increase the likelihood of proposals passing. Example: 0.6 = 60% chance each voter approves.")
-        participation_prob = st.slider("Participation probability", 0.0, 1.0, 0.95, 0.05,
-                                      help="The probability that each voter will participate in the vote at all. Lower values reduce total participation, making quorum harder to meet. Example: 0.95 = 95% chance each voter participates.")
+        
+        quorum = st.slider(
+            "Quorum", 
+            0.0, 1.0, 0.5, 0.05,
+            help="The minimum percentage of total voting weight that must participate for a vote to be considered valid. Range: 0.0 (0%) to 1.0 (100%), step: 0.05 (5%). Example: 0.5 = 50% of all voters must participate. Lower values make it easier to meet the participation requirement. Current value is shown on the slider."
+        )
+        
+        threshold = st.slider(
+            "Approval threshold", 
+            0.0, 1.0, 0.5, 0.05,
+            help="The minimum percentage of participating voting weight that must vote 'for' to pass. Range: 0.0 (0%) to 1.0 (100%), step: 0.05 (5%). Requires strict majority (support > threshold), so a 50/50 tie fails when threshold is 0.5. Lower values make proposals easier to pass. Current value is shown on the slider."
+        )
+        
+        approval_prob = st.slider(
+            "Approval probability", 
+            0.0, 1.0, 0.6, 0.05,
+            help="The probability that each participating voter will vote 'for' the proposal. Range: 0.0 (0%) to 1.0 (100%), step: 0.05 (5%). Higher values increase the likelihood of proposals passing. Example: 0.6 = 60% chance each voter approves. Current value is shown on the slider."
+        )
+        
+        participation_prob = st.slider(
+            "Participation probability", 
+            0.0, 1.0, 0.95, 0.05,
+            help="The probability that each voter will participate in the vote at all. Range: 0.0 (0%) to 1.0 (100%), step: 0.05 (5%). Lower values reduce total participation, making quorum harder to meet. Example: 0.95 = 95% chance each voter participates. Current value is shown on the slider."
+        )
         voter_count = st.number_input("Voters", value=10, step=1, min_value=1, max_value=100,
                                      help="Number of simulated voters. Each voter has a weight (1, 2, 3, ..., N). Total voting weight = sum of all voter weights.")
         # Proposal sequence selection
@@ -286,7 +584,7 @@ with tab_run:
         log_entry = f"[{timestamp}] [{level}] {message}"
         st.session_state.sim_log.append(log_entry)
         st.session_state.log_update_counter += 1  # Increment to force refresh
-    
+
     if submitted:
         # Load worlds for name formatting
         _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
@@ -321,7 +619,7 @@ with tab_run:
         if proposal_sequence == "All 6 proposals (interleaved)":
             all_proposals = all_six_proposals_sequence()
         else:
-            all_proposals = default_proposals()
+        all_proposals = default_proposals()
         
         # Filter to only matching proposals if requested
         if filter_matching_only:
@@ -590,7 +888,7 @@ with tab_run:
                 if result.quorum_met and support_pct <= threshold_pct:
                     if support_pct == threshold_pct:
                         failure_reasons.append(f"Threshold not met ({support_pct:.1f}% = {threshold_pct:.1f}% - tie fails, requires >{threshold_pct:.1f}%)")
-                    else:
+        else:
                         failure_reasons.append(f"Threshold not met ({support_pct:.1f}% < {threshold_pct:.1f}%)")
                 
                 reason = " | ".join(failure_reasons) if failure_reasons else "Unknown reason"
@@ -644,8 +942,8 @@ with tab_graph:
             - **Valuation**: Each world has a truth assignment showing which propositions (p1, p2, p3, p4) are true in that world, displayed as {p1, p2, ...}
             
             The model provides a formal way to reason about what governance states are possible, which transitions are valid, and what properties hold in different configurations.
-            """
-        )
+        """
+    )
     with st.expander("Graph elements"):
         st.markdown(
             """
@@ -681,7 +979,141 @@ with tab_graph:
         else:
             labels[w_id] = f"{w_id} ({world_name})"
     history_path = os.path.join(examples_dir, "history.json")
-    st.image(graph_png_bytes(store.G, active_world, labels, history_path))
+    
+    # Graph view option
+    graph_view = st.radio(
+        "Graph View",
+        ["Static Image", "Interactive (with hover tooltips)"],
+        horizontal=True,
+        help="Static Image: PNG visualization. Interactive: Plotly graph with hover tooltips showing world details."
+    )
+    
+    if graph_view == "Interactive (with hover tooltips)" and PLOTLY_AVAILABLE:
+        # Create interactive Plotly graph with tooltips
+        import plotly.graph_objects as go
+        import networkx as nx
+        
+        # Get layout positions (same as matplotlib for consistency)
+        pos = nx.spring_layout(store.G, seed=7)
+        
+        # Determine visited worlds
+        visited_worlds = set()
+        if history_path and os.path.exists(history_path):
+            try:
+                with open(history_path, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+                    for h in history:
+                        visited_worlds.add(h.get("from_world"))
+                        visited_worlds.add(h.get("to_world"))
+            except Exception:
+                pass
+        
+        # Prepare edge traces
+        edge_x = []
+        edge_y = []
+        for edge in store.G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+        
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=2, color='#888'),
+            hoverinfo='none',
+            mode='lines'
+        )
+        
+        # Prepare node traces with tooltips
+        node_x = []
+        node_y = []
+        node_text = []
+        node_info = []
+        node_colors = []
+        
+        for node in store.G.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+            
+            world = worlds[node]
+            true_props = [p for p in props if model.is_true(p, node)]
+            false_props = [p for p in props if p not in true_props]
+            
+            # Create tooltip text
+            tooltip_parts = [
+                f"<b>{node} ({world.name})</b>",
+                f"<br>Description: {world.description}",
+                "<br><br><b>Valuation:</b>",
+            ]
+            
+            if true_props:
+                tooltip_parts.append(f"<br>✓ True: {', '.join(true_props)}")
+            if false_props:
+                tooltip_parts.append(f"<br>✗ False: {', '.join(false_props)}")
+            
+            tooltip_parts.extend([
+                "<br><br><b>Metadata:</b>",
+                f"<br>Necessary: {', '.join(world.necessary) if world.necessary else 'None'}",
+                f"<br>Possible: {', '.join(world.possible) if world.possible else 'None'}",
+                f"<br>Edges: {', '.join(world.edges) if world.edges else 'None'}",
+                f"<br>Arweave URI: {world.arweave_uri}",
+                f"<br>Created by: {world.created_by}",
+                f"<br>Created at: {world.created_at}",
+            ])
+            
+            node_text.append(labels.get(node, node))
+            node_info.append("".join(tooltip_parts))
+            
+            # Set color based on state
+            if node == active_world:
+                node_colors.append("#ffcc00")  # Yellow
+            elif node in visited_worlds:
+                node_colors.append("#90ee90")  # Green
+            else:
+                node_colors.append("#87ceeb")  # Blue
+        
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers+text',
+            hoverinfo='text',
+            text=node_text,
+            textposition="middle center",
+            textfont=dict(size=10),
+            hovertext=node_info,
+            marker=dict(
+                size=30,
+                color=node_colors,
+                line=dict(width=2, color='black')
+            )
+        )
+        
+        fig = go.Figure(data=[edge_trace, node_trace],
+                       layout=go.Layout(
+                           title='',
+                           showlegend=False,
+                           hovermode='closest',
+                           margin=dict(b=20, l=5, r=5, t=40),
+                           annotations=[dict(
+                               text="Hover over nodes to see world details",
+                               showarrow=False,
+                               xref="paper", yref="paper",
+                               x=0.005, y=-0.002,
+                               xanchor="left", yanchor="bottom",
+                               font=dict(size=12, color="#666")
+                           )],
+                           xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                           yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                           plot_bgcolor='white'
+                       ))
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+    elif graph_view == "Interactive (with hover tooltips)" and not PLOTLY_AVAILABLE:
+        st.warning("⚠️ Plotly is not installed. Install it with: `pip install plotly` to enable interactive graphs with hover tooltips.")
+        st.image(graph_png_bytes(store.G, active_world, labels, history_path))
+    else:
+        st.image(graph_png_bytes(store.G, active_world, labels, history_path))
     
     # Add legend explaining node colors
     st.markdown("**Node Colors:**")
@@ -689,6 +1121,86 @@ with tab_graph:
     col1.markdown("🟡 **Yellow**: Active world (current state)")
     col2.markdown("🟢 **Green**: Visited world (has been reached by a successful proposal)")
     col3.markdown("🔵 **Blue**: Unvisited world (not yet reached)")
+    
+    st.divider()
+    
+    # World Details Section with Tooltip-like Information
+    st.subheader("🔍 World Details (Hover Information)")
+    st.markdown("Select a world to view its valuation (proposition states) and full metadata:")
+    
+    world_ids_list = sorted(worlds.keys())
+    selected_world_id = st.selectbox(
+        "Select a world to view details",
+        world_ids_list,
+        index=world_ids_list.index(active_world) if active_world in world_ids_list else 0,
+        help="Select any world to see its valuation (which propositions are true) and full metadata (token data)"
+    )
+    
+    if selected_world_id in worlds:
+        selected_world = worlds[selected_world_id]
+        
+        # Get valuation for this world
+        true_props = [p for p in props if model.is_true(p, selected_world_id)]
+        false_props = [p for p in props if p not in true_props]
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 📊 Valuation (Proposition States)")
+            st.markdown(f"**World**: {selected_world_id} ({selected_world.name})")
+            
+            if true_props:
+                st.markdown("**True Propositions:**")
+                for prop in true_props:
+                    st.success(f"✓ {prop} = **True**")
+            else:
+                st.info("No propositions are true in this world")
+            
+            if false_props:
+                st.markdown("**False Propositions:**")
+                for prop in false_props:
+                    st.error(f"✗ {prop} = **False**")
+        
+        with col2:
+            st.markdown("### 🪙 World Metadata (Token Data)")
+            from sim.tokenize import cip25_like_metadata
+            metadata = cip25_like_metadata(selected_world)
+            
+            st.json(metadata)
+        
+        # Additional details
+        with st.expander("📋 Detailed World Information"):
+            st.markdown(f"**World ID**: `{selected_world.world_id}`")
+            st.markdown(f"**Name**: {selected_world.name}")
+            st.markdown(f"**Description**: {selected_world.description}")
+            
+            st.markdown("**Necessary Properties:**")
+            if selected_world.necessary:
+                st.code(", ".join(selected_world.necessary))
+            else:
+                st.info("None")
+            
+            st.markdown("**Possible Properties:**")
+            if selected_world.possible:
+                st.code(", ".join(selected_world.possible))
+            else:
+                st.info("None")
+            
+            st.markdown("**Possible Transitions (Edges):**")
+            if selected_world.edges:
+                edge_list = [f"{selected_world_id} → {edge}" for edge in selected_world.edges]
+                st.code("\n".join(edge_list))
+            else:
+                st.info("No outgoing transitions")
+            
+            st.markdown("**Arweave URI**:")
+            st.code(selected_world.arweave_uri)
+            
+            st.markdown("**Created By**:")
+            st.code(selected_world.created_by)
+            
+            st.markdown("**Created At**:")
+            st.code(selected_world.created_at)
 
 
 with tab_timeline:
@@ -807,7 +1319,7 @@ with tab_data:
     # Use container to force refresh
     history_container = st.empty()
     history_container.json(current_history)
-    
+
     # Truth table for valuation.json
     st.subheader("Truth Table")
     st.markdown("Tabular representation of **valuation.json**: Shows which propositions are true in each world.")
