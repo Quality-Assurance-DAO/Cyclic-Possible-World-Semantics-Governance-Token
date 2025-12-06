@@ -32,6 +32,11 @@ def load_worlds_and_valuation(examples_dir: str):
 
 
 def default_proposals():
+    """Default proposal sequence: forward cycle then reverse edges.
+    
+    Note: Only the first 4 proposals can run in sequence because prop-005 and prop-006
+    are reverse edges that require starting from w2 or w3, but after prop-004 you're at w1.
+    """
     return [
         ("prop-001", "w1", "w2"),
         ("prop-002", "w2", "w3"),
@@ -39,6 +44,24 @@ def default_proposals():
         ("prop-004", "w4", "w1"),
         ("prop-005", "w2", "w1"),
         ("prop-006", "w3", "w2"),
+    ]
+
+
+def all_six_proposals_sequence():
+    """Alternative sequence that allows all 6 proposals to run by interleaving reverse edges.
+    
+    This sequence runs reverse proposals when the active world matches, allowing all 6 original
+    proposals to execute. Uses intermediate proposals to navigate back to required starting worlds.
+    """
+    return [
+        ("prop-001", "w1", "w2"),  # w1 → w2 (active: w2)
+        ("prop-005", "w2", "w1"),  # w2 → w1 (reverse, active: w1) ✓ prop-005 executed
+        ("prop-001-repeat", "w1", "w2"),  # w1 → w2 (again, active: w2)
+        ("prop-002", "w2", "w3"),  # w2 → w3 (active: w3)
+        ("prop-006", "w3", "w2"),  # w3 → w2 (reverse, active: w2) ✓ prop-006 executed
+        ("prop-002-repeat", "w2", "w3"),  # w2 → w3 (again, active: w3)
+        ("prop-003", "w3", "w4"),  # w3 → w4 (active: w4)
+        ("prop-004", "w4", "w1"),  # w4 → w1 (active: w1)
     ]
 
 

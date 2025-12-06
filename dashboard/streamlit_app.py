@@ -19,6 +19,7 @@ from sim.sim_helpers import (
     ensure_examples_dirs,
     load_worlds_and_valuation,
     default_proposals,
+    all_six_proposals_sequence,
     build_voters,
     run_single_proposal,
 )
@@ -155,10 +156,20 @@ with tab_run:
         approval_prob = st.slider("Approval probability", 0.0, 1.0, 0.6, 0.05)
         participation_prob = st.slider("Participation probability", 0.0, 1.0, 0.95, 0.05)
         voter_count = st.number_input("Voters", value=10, step=1, min_value=1, max_value=100)
-        # Get the actual number of available proposals
-        available_proposals = len(default_proposals())
+        # Proposal sequence selection
+        proposal_sequence = st.radio(
+            "Proposal sequence",
+            ["Default (forward cycle + reverse)", "All 6 proposals (interleaved)"],
+            help="Default: w1→w2→w3→w4→w1 then reverse (only 4 can run). All 6: interleaved sequence allowing all proposals to run."
+        )
+        # Get the actual number of available proposals based on selected sequence
+        if proposal_sequence == "All 6 proposals (interleaved)":
+            all_proposals_list = all_six_proposals_sequence()
+        else:
+            all_proposals_list = default_proposals()
+        available_proposals = len(all_proposals_list)
         n_steps = st.number_input("Run N predefined proposals", value=6, step=1, min_value=1, max_value=available_proposals, 
-                                 help=f"Maximum {available_proposals} proposals are available")
+                                 help=f"Maximum {available_proposals} proposals are available in selected sequence")
         clear_history = st.checkbox("Clear history before running", value=True, 
                                    help="If checked, resets history and active world to initial state before running the simulation")
         submitted = st.form_submit_button("Run Simulation")
@@ -195,7 +206,11 @@ with tab_run:
         
         rng = random.Random(int(seed))
         voters = build_voters(int(voter_count))
-        all_proposals = default_proposals()
+        # Use selected proposal sequence
+        if proposal_sequence == "All 6 proposals (interleaved)":
+            all_proposals = all_six_proposals_sequence()
+        else:
+            all_proposals = default_proposals()
         max_available = len(all_proposals)
         requested_steps = int(n_steps)
         
