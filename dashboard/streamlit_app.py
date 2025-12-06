@@ -133,7 +133,10 @@ with tab_run:
         approval_prob = st.slider("Approval probability", 0.0, 1.0, 0.6, 0.05)
         participation_prob = st.slider("Participation probability", 0.0, 1.0, 0.95, 0.05)
         voter_count = st.number_input("Voters", value=10, step=1, min_value=1, max_value=100)
-        n_steps = st.number_input("Run N predefined proposals", value=6, step=1, min_value=1, max_value=20)
+        # Get the actual number of available proposals
+        available_proposals = len(default_proposals())
+        n_steps = st.number_input("Run N predefined proposals", value=6, step=1, min_value=1, max_value=available_proposals, 
+                                 help=f"Maximum {available_proposals} proposals are available")
         clear_history = st.checkbox("Clear history before running", value=True, 
                                    help="If checked, resets history and active world to initial state before running the simulation")
         submitted = st.form_submit_button("Run Simulation")
@@ -142,10 +145,31 @@ with tab_run:
         # Clear history if requested
         if clear_history:
             reset_history()
+            # Verify history was cleared
+            verify_history = read_history()
+            if len(verify_history) > 0:
+                st.error(f"Warning: History was not cleared properly. Still has {len(verify_history)} entries.")
+            else:
+                st.success("History cleared successfully.")
+        
         rng = random.Random(int(seed))
         voters = build_voters(int(voter_count))
-        proposals = default_proposals()[: int(n_steps)]
+        all_proposals = default_proposals()
+        max_available = len(all_proposals)
+        requested_steps = int(n_steps)
+        
+        # Warn if requesting more proposals than available
+        if requested_steps > max_available:
+            st.warning(f"Requested {requested_steps} proposals, but only {max_available} are available. Running {max_available} proposals.")
+            requested_steps = max_available
+        
+        proposals = all_proposals[:requested_steps]
+        
+        # Debug: Show what proposals will be run
+        st.info(f"Running {len(proposals)} proposal(s): {[p[0] for p in proposals]}")
+        
         last_result = None
+        successful_count = 0
         for prop_id, src, dst in proposals:
             tx, result = run_single_proposal(
                 examples_dir=examples_dir,
@@ -159,6 +183,8 @@ with tab_run:
                 participation_probability=float(participation_prob),
                 voters=voters,
             )
+            if tx is not None:
+                successful_count += 1
             last_result = (prop_id, src, dst, tx, result)
         if last_result:
             prop_id, src, dst, tx, result = last_result
@@ -166,6 +192,11 @@ with tab_run:
                 st.warning(f"Last proposal {prop_id} {src}->{dst} failed. Quorum={result.quorum_met}")
             else:
                 st.success(f"Last TX {tx.tx_id}: {src}->{dst} passed.")
+        
+        # Show summary of successful transitions
+        final_history = read_history()
+        st.info(f"Simulation complete: {successful_count}/{len(proposals)} proposals succeeded. History now contains {len(final_history)} transitions.")
+        
         st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
         st.rerun()
 
@@ -216,13 +247,18 @@ with tab_graph:
             - **Layout**: Spring layout (may vary on refresh).
             """
         )
-    # Force refresh by including refresh counter in computation
-    _ = st.session_state.get("refresh_counter", 0)
+    # Force refresh by including refresh counter and active world in computation
+    refresh_counter = st.session_state.get("refresh_counter", 0)
+    active = read_active()
+    active_world = active.get("active_world", "w1")
+    last_tx = active.get("last_tx", "")
+    # Include active world state to force regeneration
+    _ = (refresh_counter, active_world, last_tx)
+    
     store, worlds, model = load_worlds_and_valuation(examples_dir)
     props = sorted(list(model.valuation.keys()))
     labels = {w: model.summarize_world_label(w, props) for w in worlds}
-    active = read_active().get("active_world", "w1")
-    st.image(graph_png_bytes(store.G, active, labels))
+    st.image(graph_png_bytes(store.G, active_world, labels))
 
 
 with tab_timeline:
@@ -251,12 +287,17 @@ with tab_timeline:
     if os.path.exists(history_path):
         file_mtime = os.path.getmtime(history_path)
     
-    # Create signature that changes with history content and file modification
+    # Create comprehensive signature that changes with any history change
     history_signature = f"{history_count}_{refresh_counter}_{file_mtime}"
     if history:
-        # Include last few proposal IDs in signature for uniqueness
-        last_props = "_".join([h.get("proposal_id", "") for h in history[-3:]])
-        history_signature += f"_{hash(last_props)}"
+        # Include all proposal IDs and transitions in signature
+        all_props = "_".join([f"{h.get('proposal_id', '')}_{h.get('from_world', '')}_{h.get('to_world', '')}" for h in history])
+        history_signature += f"_{hash(all_props)}"
+    
+    # Also check active world to ensure we refresh when it changes
+    active = read_active()
+    active_world = active.get("active_world", "w1")
+    history_signature += f"_{active_world}"
     
     # Force Streamlit to recognize this as a new computation
     _ = history_signature
@@ -266,12 +307,12 @@ with tab_timeline:
     
     if tl_bytes:
         # Display image - Streamlit should regenerate due to signature change
-        st.image(tl_bytes, use_container_width=True)
+        st.image(tl_bytes, width='stretch')
     else:
         st.info("No timeline yet. Run a simulation to generate transitions.")
     data = history
     if data:
-        st.dataframe(data, use_container_width=True, hide_index=True)
+        st.dataframe(data, width='stretch', hide_index=True)
 
 
 with tab_data:
@@ -290,6 +331,21 @@ with tab_data:
             - **worlds/*.json**: Individual world definitions with metadata, edges, and Arweave URI placeholders.
             """
         )
+    # Force refresh by including refresh counter and file modification times
+    refresh_counter = st.session_state.get("refresh_counter", 0)
+    history = read_history()
+    history_count = len(history)
+    
+    # Get file modification times to detect changes
+    history_path = os.path.join(examples_dir, "history.json")
+    active_path = os.path.join(examples_dir, "active_world.json")
+    history_mtime = os.path.getmtime(history_path) if os.path.exists(history_path) else 0
+    active_mtime = os.path.getmtime(active_path) if os.path.exists(active_path) else 0
+    
+    # Create signature to force refresh
+    data_signature = f"{refresh_counter}_{history_count}_{history_mtime}_{active_mtime}"
+    _ = data_signature
+    
     st.subheader("Artifacts")
     colA, colB = st.columns(2)
     with colA:
@@ -309,6 +365,10 @@ with tab_data:
         else:
             st.info("No graph.json yet. Initialize the graph.")
     st.write("history.json")
-    st.json(read_history())
+    # Always read fresh from file - force refresh by including in computation
+    current_history = read_history()
+    # Include history content in signature to force refresh
+    _ = (data_signature, len(current_history), hash(str(current_history)) if current_history else 0)
+    st.json(current_history)
 
 
