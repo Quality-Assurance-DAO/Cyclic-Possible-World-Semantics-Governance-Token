@@ -242,127 +242,24 @@ with tab_overview:
         """
     )
     
-    st.divider()
+    # Load data for Current State Summary and Quick Actions
+    active = read_active()
+    history = read_history()
+    # Load worlds to get names for display
+    try:
+        _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
+        active_world_id = active.get("active_world", "w1")
+        active_world_label = format_world_label(active_world_id, worlds_dict)
+    except Exception:
+        worlds_dict = {}
+        active_world_id = active.get("active_world", "w1")
+        active_world_label = active.get("active_world", "w1")
     
-    # Section 1: Active World
-    st.subheader("📍 Step 1: Understanding the Active World")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown("""
-        **What is the Active World?**
-        
-        The **Active World** is the current governance state that is in effect right now. 
-        Think of it as the "current version" of your DAO's governance rules.
-        
-        **How it works:**
-        - When the simulation starts, the active world is **w1 (Base Governance)** by default
-        - When a governance proposal **passes** (meets quorum and threshold), the active world changes to the proposal's destination
-        - When a proposal **fails**, the active world stays the same
-        
-        **Why it matters:**
-        - Only proposals that match the active world can run (e.g., if active world is w2, only proposals starting from w2 can execute)
-        - The active world determines which governance rules are currently in effect
-        - You can see the active world highlighted in **yellow** in the Graph tab
-        """)
-    
-    with col2:
-        active = read_active()
-        history = read_history()
-        # Load worlds to get names for display
-        try:
-            _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
-            active_world_id = active.get("active_world", "w1")
-            active_world_label = format_world_label(active_world_id, worlds_dict)
-        except Exception:
-            active_world_label = active.get("active_world", "w1")
-        
-        st.metric("🎯 Active World", active_world_label)
-        
-        # Show explanation based on active world
-        if active_world_id == "w1":
-            st.info("**Base Governance** - The starting state with minimal rules.")
-        elif active_world_id == "w2":
-            st.info("**Quorum Enabled** - Quorum requirements are now active.")
-        elif active_world_id == "w3":
-            st.info("**Delegated Governance** - Delegation features are enabled.")
-        elif active_world_id == "w4":
-            st.info("**Council Governance** - Council-based governance is active.")
+    transition_count = len(history)
     
     st.divider()
-    
-    # Section 2: Transition Count
-    st.subheader("🔄 Step 2: Understanding Transition Count")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown("""
-        **What is a Transition?**
-        
-        A **transition** is a successful governance proposal that moved the system from one world to another.
-        Each time a proposal passes (meets quorum and threshold), it creates a transition.
-        
-        **How transitions work:**
-        1. A proposal attempts to move from World A → World B
-        2. Voters participate and vote "for" or "against"
-        3. If the proposal **passes** (quorum + threshold met), a transition occurs:
-           - The active world changes from A to B
-           - A transition record is added to the history
-           - The transition count increases by 1
-        4. If the proposal **fails**, no transition occurs (active world stays the same)
-        
-        **Why it matters:**
-        - Transition count shows how many successful governance changes have occurred
-        - Each transition represents a community decision that changed the governance state
-        - You can see all transitions in the **Timeline** tab
-        - The history of transitions shows the governance journey over time
-        """)
-    
-    with col2:
-        transition_count = len(history)
-        st.metric("📈 Total Transitions", transition_count)
-        
-        if transition_count == 0:
-            st.info("**No transitions yet.** Run a simulation in the **Configure & Run** tab to create transitions!")
-        elif transition_count == 1:
-            st.success(f"**1 transition** recorded. Check the Timeline tab to see it!")
-        else:
-            st.success(f"**{transition_count} transitions** recorded. The system has evolved through {transition_count} governance changes!")
-    
-    st.divider()
-    
-    # Section 3: Putting it Together
-    st.subheader("🔗 Step 3: How Active World and Transitions Work Together")
-    
-    st.markdown("""
-    **The Relationship:**
-    
-    - **Active World** = Where you are now
-    - **Transitions** = How you got here (the journey)
-    
-    **Example Journey:**
-    
-    1. **Start**: Active World = w1 (Base Governance), Transitions = 0
-    2. **Proposal 1 passes** (w1 → w2): 
-       - ✅ Transition created (Transitions = 1)
-       - ✅ Active World changes to w2 (Quorum Enabled)
-    3. **Proposal 2 passes** (w2 → w3):
-       - ✅ Transition created (Transitions = 2)
-       - ✅ Active World changes to w3 (Delegated Governance)
-    4. **Proposal 3 fails** (w3 → w4):
-       - ❌ No transition created (Transitions still = 2)
-       - ❌ Active World stays at w3 (no change)
-    5. **Proposal 4 passes** (w3 → w2):
-       - ✅ Transition created (Transitions = 3)
-       - ✅ Active World changes to w2 (back to Quorum Enabled)
-    
-    Notice how the system can go **backwards** (w3 → w2) - this is the **cyclic** nature of possible worlds!
-    """)
     
     # Show current state summary
-    st.divider()
     st.subheader("📋 Current State Summary")
     
     col1, col2, col3 = st.columns(3)
@@ -420,6 +317,114 @@ with tab_overview:
     
     st.divider()
     
+    # Section 1: Active World
+    st.subheader("📍 Step 1: Understanding the Active World")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("""
+        **What is the Active World?**
+        
+        The **Active World** is the current governance state that is in effect right now. 
+        Think of it as the "current version" of your DAO's governance rules.
+        
+        **How it works:**
+        - When the simulation starts, the active world is **w1 (Base Governance)** by default
+        - When a governance proposal **passes** (meets quorum and threshold), the active world changes to the proposal's destination
+        - When a proposal **fails**, the active world stays the same
+        
+        **Why it matters:**
+        - Only proposals that match the active world can run (e.g., if active world is w2, only proposals starting from w2 can execute)
+        - The active world determines which governance rules are currently in effect
+        - You can see the active world highlighted in **yellow** in the Graph tab
+        """)
+    
+    with col2:
+        st.metric("🎯 Active World", active_world_label)
+        
+        # Show explanation based on active world
+        if active_world_id == "w1":
+            st.info("**Base Governance** - The starting state with minimal rules.")
+        elif active_world_id == "w2":
+            st.info("**Quorum Enabled** - Quorum requirements are now active.")
+        elif active_world_id == "w3":
+            st.info("**Delegated Governance** - Delegation features are enabled.")
+        elif active_world_id == "w4":
+            st.info("**Council Governance** - Council-based governance is active.")
+    
+    st.divider()
+    
+    # Section 2: Transition Count
+    st.subheader("🔄 Step 2: Understanding Transition Count")
+    
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("""
+        **What is a Transition?**
+        
+        A **transition** is a successful governance proposal that moved the system from one world to another.
+        Each time a proposal passes (meets quorum and threshold), it creates a transition.
+        
+        **How transitions work:**
+        1. A proposal attempts to move from World A → World B
+        2. Voters participate and vote "for" or "against"
+        3. If the proposal **passes** (quorum + threshold met), a transition occurs:
+           - The active world changes from A to B
+           - A transition record is added to the history
+           - The transition count increases by 1
+        4. If the proposal **fails**, no transition occurs (active world stays the same)
+        
+        **Why it matters:**
+        - Transition count shows how many successful governance changes have occurred
+        - Each transition represents a community decision that changed the governance state
+        - You can see all transitions in the **Timeline** tab
+        - The history of transitions shows the governance journey over time
+        """)
+    
+    with col2:
+        st.metric("📈 Total Transitions", transition_count)
+        
+        if transition_count == 0:
+            st.info("**No transitions yet.** Run a simulation in the **Configure & Run** tab to create transitions!")
+        elif transition_count == 1:
+            st.success(f"**1 transition** recorded. Check the Timeline tab to see it!")
+        else:
+            st.success(f"**{transition_count} transitions** recorded. The system has evolved through {transition_count} governance changes!")
+    
+    st.divider()
+    
+    # Section 3: Putting it Together
+    st.subheader("🔗 Step 3: How Active World and Transitions Work Together")
+    
+    st.markdown("""
+    **The Relationship:**
+    
+    - **Active World** = Where you are now
+    - **Transitions** = How you got here (the journey)
+    
+    **Example Journey:**
+    
+    1. **Start**: Active World = w1 (Base Governance), Transitions = 0
+    2. **Proposal 1 passes** (w1 → w2): 
+       - ✅ Transition created (Transitions = 1)
+       - ✅ Active World changes to w2 (Quorum Enabled)
+    3. **Proposal 2 passes** (w2 → w3):
+       - ✅ Transition created (Transitions = 2)
+       - ✅ Active World changes to w3 (Delegated Governance)
+    4. **Proposal 3 fails** (w3 → w4):
+       - ❌ No transition created (Transitions still = 2)
+       - ❌ Active World stays at w3 (no change)
+    5. **Proposal 4 passes** (w3 → w2):
+       - ✅ Transition created (Transitions = 3)
+       - ✅ Active World changes to w2 (back to Quorum Enabled)
+    
+    Notice how the system can go **backwards** (w3 → w2) - this is the **cyclic** nature of possible worlds!
+    """)
+    
+    st.divider()
+    
     # Additional help
     with st.expander("💡 Need More Help?"):
         st.markdown("""
@@ -429,30 +434,6 @@ with tab_overview:
         - **Timeline Tab**: View the sequence of transitions over time
         - **Data Tab**: Inspect raw JSON files and truth tables
         """)
-    col2.metric("Transitions", len(history))
-    col3.metric("Last TX", active.get("last_tx") or "—")
-
-    st.subheader("Quick Actions")
-    c1, c2 = st.columns(2)
-    if c1.button("Initialize Example Graph", use_container_width=True):
-        init_graph_script()
-        st.success("Initialized worlds and graph in examples/.")
-    if c2.button("Reset History", use_container_width=True):
-        reset_history()
-        # Verify reset worked - active world should always be w1 after reset
-        verify_active = read_active().get("active_world", "w1")
-        verify_history = read_history()
-        if verify_active == "w1" and len(verify_history) == 0:
-            st.success(f"Cleared history and reset active world to w1 (default initial state).")
-        else:
-            st.error(f"Reset may have failed. Active world: {verify_active} (expected w1), History entries: {len(verify_history)}")
-        st.session_state.history_reset = True
-        st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
-        st.rerun()
-    
-    if st.session_state.get("history_reset", False):
-        # Message already shown above
-        st.session_state.history_reset = False
 
 
 with tab_run:
@@ -619,7 +600,7 @@ with tab_run:
         if proposal_sequence == "All 6 proposals (interleaved)":
             all_proposals = all_six_proposals_sequence()
         else:
-        all_proposals = default_proposals()
+            all_proposals = default_proposals()
         
         # Filter to only matching proposals if requested
         if filter_matching_only:
@@ -888,7 +869,7 @@ with tab_run:
                 if result.quorum_met and support_pct <= threshold_pct:
                     if support_pct == threshold_pct:
                         failure_reasons.append(f"Threshold not met ({support_pct:.1f}% = {threshold_pct:.1f}% - tie fails, requires >{threshold_pct:.1f}%)")
-        else:
+                    else:
                         failure_reasons.append(f"Threshold not met ({support_pct:.1f}% < {threshold_pct:.1f}%)")
                 
                 reason = " | ".join(failure_reasons) if failure_reasons else "Unknown reason"
