@@ -76,14 +76,14 @@ def draw_timeline(history_path: str, outfile: str) -> None:
     plt.yticks(list(world_index.values()), list(world_index.keys()))
     plt.xlabel("Transition #")
     plt.ylabel("World")
-    plt.title("Transition Timeline")
+    plt.title("Transition Timeline", pad=20)  # Add padding to prevent clipping
     plt.grid(True, alpha=0.3, axis='y')
     plt.legend(loc='upper right')
     try:
-        plt.tight_layout()
+        plt.tight_layout(pad=2.0)  # Add padding to tight_layout
     except Exception:
-        # If tight_layout fails, use subplots_adjust as fallback
-        plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.15)
+        # If tight_layout fails, use subplots_adjust as fallback with more top space
+        plt.subplots_adjust(left=0.1, right=0.95, top=0.85, bottom=0.15)
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
     plt.savefig(outfile)
     plt.close()
@@ -161,14 +161,14 @@ def timeline_png_bytes(history_path: str) -> bytes:
     plt.yticks(list(world_index.values()), list(world_index.keys()))
     plt.xlabel("Transition #")
     plt.ylabel("World")
-    plt.title("Transition Timeline")
+    plt.title("Transition Timeline", pad=20)  # Add padding to prevent clipping
     plt.grid(True, alpha=0.3, axis='y')
     plt.legend(loc='upper right')
     try:
-        plt.tight_layout()
+        plt.tight_layout(pad=2.0)  # Add padding to tight_layout
     except Exception:
-        # If tight_layout fails, use subplots_adjust as fallback
-        plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.15)
+        # If tight_layout fails, use subplots_adjust as fallback with more top space
+        plt.subplots_adjust(left=0.1, right=0.95, top=0.85, bottom=0.15)
     buf = BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
