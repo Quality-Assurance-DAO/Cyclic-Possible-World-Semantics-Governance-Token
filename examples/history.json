@@ -1,6 +1,6 @@
 [
   {
-    "tx_id": "1e5d6b6d-892c-4cba-b2e9-c40ca64619e5",
+    "tx_id": "48e8991b-f1ae-4046-868b-7268285793ff",
     "proposal_id": "prop-001-forward",
     "from_world": "w1",
     "to_world": "w2",
@@ -9,7 +9,7 @@
     "votes_for": 52,
     "votes_against": 3,
     "quorum": 0.5,
-    "timestamp": "2025-12-06T05:03:42Z",
+    "timestamp": "2025-12-06T05:14:26Z",
     "signers": [
       "gov_key1",
       "gov_key2"
@@ -17,16 +17,50 @@
     "notes": "simulation run"
   },
   {
-    "tx_id": "bfd348ad-1c50-4815-936b-7ad6cc700de5",
-    "proposal_id": "prop-005-reverse",
+    "tx_id": "96505efd-34d3-4b6e-a334-18bfa7e4f8c0",
+    "proposal_id": "prop-002-forward",
     "from_world": "w2",
-    "to_world": "w1",
+    "to_world": "w3",
     "arweave_from": "ar://placeholder-518c2391a70e7932",
-    "arweave_to": "ar://placeholder-6190fe2d1ad58e90",
+    "arweave_to": "ar://placeholder-cd70b5f0c4cedfe4",
+    "votes_for": 22,
+    "votes_against": 22,
+    "quorum": 0.5,
+    "timestamp": "2025-12-06T05:14:26Z",
+    "signers": [
+      "gov_key1",
+      "gov_key2"
+    ],
+    "notes": "simulation run"
+  },
+  {
+    "tx_id": "fa087148-91d4-471c-aa5c-912cf75246b2",
+    "proposal_id": "prop-003-forward",
+    "from_world": "w3",
+    "to_world": "w4",
+    "arweave_from": "ar://placeholder-cd70b5f0c4cedfe4",
+    "arweave_to": "ar://placeholder-6dea29048d1406b8",
     "votes_for": 28,
     "votes_against": 27,
     "quorum": 0.5,
-    "timestamp": "2025-12-06T05:03:42Z",
+    "timestamp": "2025-12-06T05:14:26Z",
+    "signers": [
+      "gov_key1",
+      "gov_key2"
+    ],
+    "notes": "simulation run"
+  },
+  {
+    "tx_id": "fdf6e043-9749-46cc-82f6-4cfefdbb5514",
+    "proposal_id": "prop-004-forward",
+    "from_world": "w4",
+    "to_world": "w1",
+    "arweave_from": "ar://placeholder-6dea29048d1406b8",
+    "arweave_to": "ar://placeholder-6190fe2d1ad58e90",
+    "votes_for": 22,
+    "votes_against": 31,
+    "quorum": 0.5,
+    "timestamp": "2025-12-06T05:14:26Z",
     "signers": [
       "gov_key1",
       "gov_key2"
