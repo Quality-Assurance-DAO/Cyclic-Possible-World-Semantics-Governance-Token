@@ -22,7 +22,11 @@ This section explains the key academic terms used in this project in novice-frie
 
 ## Quickstart
 
-1) Create a virtualenv and install dependencies:
+The **Streamlit Dashboard** is the most intuitive interface for exploring the simulation. It provides immediate visual feedback and is the recommended starting point.
+
+### Step 1: Setup
+
+Create a virtualenv and install dependencies:
 
 ```bash
 python3 -m venv .venv
@@ -30,13 +34,65 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2) Initialize the example graph and worlds:
+### Step 2: Launch the Dashboard
+
+Start the interactive Streamlit dashboard:
+
+```bash
+streamlit run dashboard/streamlit_app.py
+```
+
+The dashboard will open in your browser automatically.
+
+### Step 3: Initialize the Example Graph
+
+1. Go to the **Overview** tab
+2. Click **"Initialize Example Graph"** button
+   - This creates the example worlds (w1, w2, w3, w4) and sets up the initial state
+
+### Step 4: Run a Simulation
+
+1. Go to the **Configure & Run** tab
+2. Ensure the **Seed** is set (default: 42)
+3. Adjust parameters if desired (quorum, threshold, approval probability, etc.)
+4. Click **"Run Vote Simulation"** button
+   - The simulation will process proposals and update the active world based on voting results
+   - Watch the **Simulation Log** for detailed information about each proposal
+
+### Step 5: View Results
+
+1. Go to the **Graph** tab to see:
+   - The Kripke model visualization with nodes colored by state (active/visited/unvisited)
+   - World labels showing which propositions are true in each world
+   - The current active world highlighted in yellow
+
+2. Go to the **Timeline** tab to see:
+   - A visual timeline of all successful transitions
+   - A table showing detailed information about each transition
+
+3. Go to the **Data** tab to inspect:
+   - Raw JSON files (active_world.json, history.json, valuation.json, etc.)
+   - A truth table showing which propositions are true in each world
+
+### Dashboard Tabs Overview
+
+- **Overview**: Active world status, transition count, and initialization/reset actions
+- **Configure & Run**: Set seed/quorum/threshold/voters/probabilities and run predefined or custom proposals
+- **Graph**: View the Kripke graph with active world highlighted and world names displayed
+- **Timeline**: View transition history and a table of recent transitions
+- **Data**: Inspect and download JSON artifacts (`examples/`)
+
+## Command-Line Interface (Alternative)
+
+If you prefer command-line tools, you can also use the CLI scripts:
+
+1) Initialize the example graph and worlds:
 
 ```bash
 python scripts/init_graph.py
 ```
 
-3) Run a voting simulation (deterministic with seed):
+2) Run a voting simulation (deterministic with seed):
 
 ```bash
 python scripts/run_vote_sim.py --seed 42
@@ -44,7 +100,7 @@ python scripts/run_vote_sim.py --seed 42
 
 This produces `examples/worlds/*.json`, `examples/graph.json`, appends to `examples/history.json`, and updates `examples/active_world.json`.
 
-4) Visualize:
+3) Visualize:
 
 ```bash
 python scripts/visualize.py
@@ -52,26 +108,11 @@ python scripts/visualize.py
 
 This generates `examples/graph.png` and `examples/timeline.png`.
 
-5) Run tests:
+4) Run tests:
 
 ```bash
 pytest -q
 ```
-
-## Streamlit Dashboard
-
-Launch the interactive dashboard (multi-tab UI):
-
-```bash
-streamlit run dashboard/streamlit_app.py
-```
-
-Tabs:
-- Overview: active world, transition count, init/reset actions
-- Configure & Run: set seed/quorum/threshold/voters/probabilities and run predefined or custom proposals
-- Graph: view the Kripke graph with active world highlighted
-- Timeline: view transition history and a table of recent transitions
-- Data: inspect and download JSON artifacts (`examples/`)
 
 ### Deploy to Streamlit Community Cloud (JSON-only)
 
