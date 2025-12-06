@@ -630,7 +630,19 @@ with tab_graph:
     
     store, worlds, model = load_worlds_and_valuation(examples_dir)
     props = sorted(list(model.valuation.keys()))
-    labels = {w: model.summarize_world_label(w, props) for w in worlds}
+    # Create labels with world names: "w1 (Base Governance):{p1}"
+    labels = {}
+    for w_id in worlds:
+        world = worlds[w_id]
+        world_name = world.name
+        # Get the proposition summary from the model
+        prop_summary = model.summarize_world_label(w_id, props)
+        # Extract just the proposition part (after the colon)
+        if ":" in prop_summary:
+            prop_part = prop_summary.split(":", 1)[1]
+            labels[w_id] = f"{w_id} ({world_name}):{prop_part}"
+        else:
+            labels[w_id] = f"{w_id} ({world_name})"
     history_path = os.path.join(examples_dir, "history.json")
     st.image(graph_png_bytes(store.G, active_world, labels, history_path))
     
