@@ -35,11 +35,37 @@ from sim.visualize import graph_png_bytes, timeline_png_bytes
 from scripts.init_graph import main as init_graph_script
 
 
-st.set_page_config(page_title="PWSGT Dashboard", layout="wide")
-st.title("PWSGT – Cyclic Possible World Governance (Simulation)")
-
 root = ROOT
 examples_dir, worlds_dir = ensure_examples_dirs(root)
+
+# Logo configuration - QA DAO logo
+# Logo file should be saved as "logo.jpg" in the dashboard directory
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "logo.jpg")
+
+# Set page config with logo as favicon if available
+page_icon_path = LOGO_PATH if os.path.exists(LOGO_PATH) else "🔮"
+st.set_page_config(
+    page_title="PWSGT Dashboard", 
+    layout="wide",
+    page_icon=page_icon_path
+)
+
+# Display logo in sidebar if available
+if LOGO_PATH and os.path.exists(LOGO_PATH):
+    with st.sidebar:
+        st.image(LOGO_PATH, use_container_width=True)
+        st.markdown("---")  # Separator line
+elif LOGO_PATH:
+    st.sidebar.warning(f"Logo not found at: {LOGO_PATH}")
+
+# Optional: Display logo at top of main page
+# Uncomment the following lines if you want a logo above the title
+# if LOGO_PATH and os.path.exists(LOGO_PATH):
+#     col1, col2, col3 = st.columns([1, 2, 1])
+#     with col2:
+#         st.image(LOGO_PATH, width=200)  # Adjust width as needed
+
+st.title("PWSGT – Cyclic Possible World Governance (Simulation)")
 
 
 def read_active():
