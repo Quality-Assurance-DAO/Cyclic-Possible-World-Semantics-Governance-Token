@@ -95,15 +95,28 @@ Notes:
 ## Example Scenario
 
 - Worlds: `w1..w4` with valuations for `p1..p4` and edges: `(w1→w2)`, `(w2→w3)`, `(w3→w4)`, `(w4→w1)`, `(w2→w1)`, `(w3→w2)`.
-- Proposals simulate enabling quorum, delegation, council creation, reset, and two reverse moves.
+- **Forward proposals** (cycle-advancing): `prop-001-forward` (w1→w2), `prop-002-forward` (w2→w3), `prop-003-forward` (w3→w4), `prop-004-forward` (w4→w1). These demonstrate forward progression through the cyclic possible world model.
+- **Reverse proposals** (cycle-reversing): `prop-005-reverse` (w2→w1), `prop-006-reverse` (w3→w2). These demonstrate that transitions can go backwards, highlighting the cyclic and reversible nature of possible worlds.
 - Voters: 10 voters with weights 1..10. Default thresholds: quorum 0.5, majority 0.5.
+
+### Demonstrating Cyclic Nature
+
+The simulation demonstrates the **cyclic nature of possible worlds** through:
+1. **Forward cycle**: Proposals advance through w1→w2→w3→w4→w1, completing a full cycle
+2. **Reverse transitions**: Proposals can go backwards (w2→w1, w3→w2), showing reversibility
+3. **Cyclic structure**: The world graph forms a cycle, allowing governance to return to previous states
 
 ## Understanding Proposal Success and Failure
 
 Proposals can **fail** even when they match the current active world. A proposal fails if:
 
 1. **Quorum not met**: Not enough voting weight participates (participation < quorum threshold)
-2. **Threshold not met**: Even with quorum, not enough participating votes are "for" (support < approval threshold)
+2. **Threshold not met**: Even with quorum, not enough participating votes are "for" (support ≤ approval threshold)
+
+**Important**: The approval threshold requires a **strict majority** (support > threshold), not just equal to the threshold. This means:
+- With threshold=0.5 (50%), a 50/50 tie (22 for, 22 against) will **fail** because 50% is not greater than 50%
+- A proposal needs **more than 50%** support to pass (e.g., 23 for, 21 against = 52.3% support passes)
+- This ensures that ties fail and only clear majorities pass
 
 ### Why Proposals Fail
 

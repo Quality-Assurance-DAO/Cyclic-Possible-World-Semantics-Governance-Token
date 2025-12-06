@@ -22,3 +22,23 @@ def test_quorum_fail():
     assert res.passed is False
 
 
+def test_tie_fails():
+    """Test that a 50/50 tie fails (requires strict majority > 50%)."""
+    voters = {"a": Voter("a", 10), "b": Voter("b", 10)}  # total=20
+    votes = {"a": True, "b": False}  # 10 for, 10 against = 50% support
+    proposal = Proposal("p", "w1", "w2", quorum=0.5, threshold=0.5)
+    res = evaluate_proposal(proposal, voters, votes)
+    assert res.quorum_met is True  # 20/20 >= 0.5
+    assert res.passed is False     # 10/20 = 0.5, but 0.5 > 0.5 is False (strict majority required)
+
+
+def test_slight_majority_passes():
+    """Test that >50% support passes."""
+    voters = {"a": Voter("a", 11), "b": Voter("b", 10)}  # total=21
+    votes = {"a": True, "b": False}  # 11 for, 10 against = 52.4% support
+    proposal = Proposal("p", "w1", "w2", quorum=0.5, threshold=0.5)
+    res = evaluate_proposal(proposal, voters, votes)
+    assert res.quorum_met is True  # 21/21 >= 0.5
+    assert res.passed is True      # 11/21 = 0.524 > 0.5
+
+

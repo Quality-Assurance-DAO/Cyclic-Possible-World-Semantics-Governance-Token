@@ -34,34 +34,49 @@ def load_worlds_and_valuation(examples_dir: str):
 def default_proposals():
     """Default proposal sequence: forward cycle then reverse edges.
     
-    Note: Only the first 4 proposals can run in sequence because prop-005 and prop-006
+    Forward proposals (cycle-advancing):
+    - prop-001: w1 → w2 (forward)
+    - prop-002: w2 → w3 (forward)
+    - prop-003: w3 → w4 (forward)
+    - prop-004: w4 → w1 (forward, completes cycle)
+    
+    Reverse proposals (cycle-reversing):
+    - prop-005: w2 → w1 (reverse)
+    - prop-006: w3 → w2 (reverse)
+    
+    Note: Only the first 4 forward proposals can run in sequence because prop-005 and prop-006
     are reverse edges that require starting from w2 or w3, but after prop-004 you're at w1.
     """
     return [
-        ("prop-001", "w1", "w2"),
-        ("prop-002", "w2", "w3"),
-        ("prop-003", "w3", "w4"),
-        ("prop-004", "w4", "w1"),
-        ("prop-005", "w2", "w1"),
-        ("prop-006", "w3", "w2"),
+        ("prop-001-forward", "w1", "w2"),  # Forward: w1 → w2
+        ("prop-002-forward", "w2", "w3"),  # Forward: w2 → w3
+        ("prop-003-forward", "w3", "w4"),  # Forward: w3 → w4
+        ("prop-004-forward", "w4", "w1"),  # Forward: w4 → w1 (completes cycle)
+        ("prop-005-reverse", "w2", "w1"),  # Reverse: w2 → w1
+        ("prop-006-reverse", "w3", "w2"),  # Reverse: w3 → w2
     ]
 
 
 def all_six_proposals_sequence():
     """Alternative sequence that allows all 6 proposals to run by interleaving reverse edges.
     
-    This sequence runs reverse proposals when the active world matches, allowing all 6 original
-    proposals to execute. Uses intermediate proposals to navigate back to required starting worlds.
+    This sequence demonstrates the cyclic nature by:
+    1. Running forward proposals to advance through the cycle
+    2. Running reverse proposals when the active world matches (demonstrating reversibility)
+    3. Using intermediate forward proposals to navigate back to required starting worlds
+    
+    This allows all 6 proposals (4 forward + 2 reverse) to execute, demonstrating both
+    forward progression and reverse transitions in the cyclic possible world model.
     """
     return [
-        ("prop-001", "w1", "w2"),  # w1 → w2 (active: w2)
-        ("prop-005", "w2", "w1"),  # w2 → w1 (reverse, active: w1) ✓ prop-005 executed
-        ("prop-001-repeat", "w1", "w2"),  # w1 → w2 (again, active: w2)
-        ("prop-002", "w2", "w3"),  # w2 → w3 (active: w3)
-        ("prop-006", "w3", "w2"),  # w3 → w2 (reverse, active: w2) ✓ prop-006 executed
-        ("prop-002-repeat", "w2", "w3"),  # w2 → w3 (again, active: w3)
-        ("prop-003", "w3", "w4"),  # w3 → w4 (active: w4)
-        ("prop-004", "w4", "w1"),  # w4 → w1 (active: w1)
+        ("prop-001-forward", "w1", "w2"),  # Forward: w1 → w2 (active: w2)
+        ("prop-005-reverse", "w2", "w1"),  # Reverse: w2 → w1 (active: w1) ✓ demonstrates reversibility
+        ("prop-001-forward-repeat", "w1", "w2"),  # Forward: w1 → w2 (again, active: w2)
+        ("prop-002-forward", "w2", "w3"),  # Forward: w2 → w3 (active: w3)
+        ("prop-006-reverse", "w3", "w2"),  # Reverse: w3 → w2 (active: w2) ✓ demonstrates reversibility
+        ("prop-002-forward-repeat", "w2", "w3"),  # Forward: w2 → w3 (again, active: w3)
+        ("prop-003-forward", "w3", "w4"),  # Forward: w3 → w4 (active: w4)
+        ("prop-004-forward", "w4", "w1"),  # Forward: w4 → w1 (completes cycle, active: w1)
     ]
 
 

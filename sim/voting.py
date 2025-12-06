@@ -55,7 +55,9 @@ def evaluate_proposal(
     participating_weight = votes_for + votes_against
     quorum_met = (participating_weight / total_weight) >= proposal.quorum if total_weight > 0 else False
     support = (votes_for / participating_weight) if participating_weight > 0 else 0.0
-    passed = quorum_met and (support >= proposal.threshold)
+    # Use > instead of >= to require a strict majority (50/50 ties fail)
+    # For threshold=0.5, this means >50% support is required, not >=50%
+    passed = quorum_met and (support > proposal.threshold)
     return VoteResult(
         votes_for=votes_for,
         votes_against=votes_against,

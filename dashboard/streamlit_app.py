@@ -130,11 +130,16 @@ with tab_run:
             """
             - **Seed**: Random number generator seed for reproducible simulations. Different seeds produce different voting patterns.
             - **Quorum**: Minimum fraction of total voting weight that must participate (e.g., 0.5 = 50%). If quorum isn't met, the proposal fails.
-            - **Approval threshold**: Fraction of participating weight that must vote "for" to pass (e.g., 0.5 = simple majority). Even with quorum, if support is below this threshold, the proposal fails.
+            - **Approval threshold**: Fraction of participating weight that must vote "for" to pass (e.g., 0.5 = simple majority). **Requires strict majority** (support > threshold), so a 50/50 tie fails. Even with quorum, if support is at or below this threshold, the proposal fails.
             - **Approval probability**: Chance each participating voter votes "for" (0.6 = 60%). Higher values increase the likelihood of proposals passing.
             - **Participation probability**: Chance each voter participates at all (0.95 = 95%). Lower values reduce total participation, making quorum harder to meet.
             - **Voters**: Number of simulated voters with weights 1, 2, 3, ..., N.
-            - **Run N predefined proposals**: Execute the first N proposals from the example sequence (w1→w2, w2→w3, w3→w4, w4→w1, w2→w1, w3→w2).
+            - **Run N predefined proposals**: Execute the first N proposals from the selected sequence.
+            - **Proposal sequence**: Choose between default sequence (4 forward proposals that complete the cycle) or interleaved sequence (all 6 proposals including reverse transitions).
+            
+            **Proposal Types:**
+            - **Forward proposals** (prop-001 through prop-004): Advance through the cycle w1→w2→w3→w4→w1, demonstrating forward progression in the cyclic possible world model.
+            - **Reverse proposals** (prop-005, prop-006): Reverse the cycle (w2→w1, w3→w2), demonstrating that transitions can go backwards, highlighting the cyclic and reversible nature of possible worlds.
             - **Guaranteed approval mode**: When enabled, all proposals that match the active world automatically pass (bypasses voting). Useful for testing state transitions without worrying about vote failures.
             
             **Understanding Proposal Success:**
@@ -160,7 +165,7 @@ with tab_run:
         proposal_sequence = st.radio(
             "Proposal sequence",
             ["Default (forward cycle + reverse)", "All 6 proposals (interleaved)"],
-            help="Default: w1→w2→w3→w4→w1 then reverse (only 4 can run). All 6: interleaved sequence allowing all proposals to run."
+            help="Default: 4 forward proposals (w1→w2→w3→w4→w1) complete the cycle, then 2 reverse proposals (only 4 can run). All 6: interleaved sequence demonstrating both forward and reverse transitions in the cyclic model."
         )
         # Get the actual number of available proposals based on selected sequence
         if proposal_sequence == "All 6 proposals (interleaved)":
@@ -258,19 +263,28 @@ with tab_run:
                 last_tx = history[-1]
                 add_log(f"Last transaction in history: {last_tx.get('proposal_id')} {last_tx.get('from_world')} → {last_tx.get('to_world')}")
             
+            # Determine proposal direction for display
+            is_reverse = "-reverse" in prop_id
+            is_forward = "-forward" in prop_id
+            direction_label = ""
+            if is_reverse:
+                direction_label = " [REVERSE - cycle-reversing]"
+            elif is_forward:
+                direction_label = " [FORWARD - cycle-advancing]"
+            
             # Debug output
-            add_log(f"Processing {prop_id}: Current active world = {current_active}, Proposal requires = {src}")
+            add_log(f"Processing {prop_id}: Current active world = {current_active}, Proposal requires = {src}{direction_label}")
             
             # Validate that the proposal's from_world matches the current active world
             if src != current_active:
-                add_log(f"SKIPPING {prop_id} ({src}→{dst}): Current active world is {current_active}, but proposal requires {src}", "WARNING")
+                add_log(f"SKIPPING {prop_id} ({src}→{dst}): Current active world is {current_active}, but proposal requires {src}{direction_label}", "WARNING")
                 skipped_count += 1
                 continue
             
             if guaranteed_approval:
-                add_log(f"Running {prop_id}: {src} → {dst} (GUARANTEED APPROVAL MODE - bypassing voting)")
+                add_log(f"Running {prop_id}: {src} → {dst}{direction_label} (GUARANTEED APPROVAL MODE - bypassing voting)")
             else:
-                add_log(f"Running {prop_id}: {src} → {dst}")
+                add_log(f"Running {prop_id}: {src} → {dst}{direction_label}")
             tx, result = run_single_proposal(
                 examples_dir=examples_dir,
                 proposal_id=prop_id,
@@ -294,7 +308,7 @@ with tab_run:
                 if new_active != dst:
                     add_log(f"ERROR: After {prop_id}, active world is {new_active} but should be {dst}", "ERROR")
                 else:
-                    add_log(f"✓ {prop_id} SUCCEEDED: {src} → {dst} (active world now: {new_active})", "SUCCESS")
+                    add_log(f"✓ {prop_id} SUCCEEDED: {src} → {dst}{direction_label} (active world now: {new_active})", "SUCCESS")
             else:
                 failed_count += 1
                 # Provide detailed failure information
@@ -309,8 +323,12 @@ with tab_run:
                     failure_reasons = []
                     if not result.quorum_met:
                         failure_reasons.append(f"Quorum not met ({participation_pct:.1f}% < {quorum_pct:.1f}%)")
-                    if result.quorum_met and support_pct < threshold_pct:
-                        failure_reasons.append(f"Threshold not met ({support_pct:.1f}% < {threshold_pct:.1f}%)")
+                    if result.quorum_met and support_pct <= threshold_pct:
+                        # Note: threshold requires strict majority (support > threshold), so ties fail
+                        if support_pct == threshold_pct:
+                            failure_reasons.append(f"Threshold not met ({support_pct:.1f}% = {threshold_pct:.1f}% - tie fails, requires >{threshold_pct:.1f}%)")
+                        else:
+                            failure_reasons.append(f"Threshold not met ({support_pct:.1f}% < {threshold_pct:.1f}%)")
                     
                     reason = " | ".join(failure_reasons) if failure_reasons else "Unknown reason"
                     add_log(f"FAILED {prop_id} ({src}→{dst}): {reason}", "ERROR")
