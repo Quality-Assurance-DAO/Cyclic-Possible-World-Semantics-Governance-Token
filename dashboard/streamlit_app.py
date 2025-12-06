@@ -401,93 +401,157 @@ with tab_overview:
 with tab_run:
     st.markdown(
         """
-        Configure simulation parameters and run proposals. You can run predefined sequences or submit custom proposals.
+        **Central experimentation area** for governance simulations. Follow the 3-step workflow below to configure and run proposals.
         """
     )
-    with st.expander("Parameters explained"):
-        st.markdown(
-            """
-            - **Seed**: Random number generator seed for reproducible simulations. Different seeds produce different voting patterns. Same seed = same results.
-            
-            - **Quorum**: The minimum percentage of total voting weight that must participate for a vote to be considered valid (e.g., 0.5 = 50%). If quorum isn't met, the proposal fails regardless of how the votes are distributed. Lower quorum = easier to meet participation requirement.
-            
-            - **Approval threshold**: The minimum percentage of participating voting weight that must vote "for" to pass (e.g., 0.5 = simple majority). **Requires strict majority** (support > threshold), so a 50/50 tie fails. Even with quorum, if support is at or below this threshold, the proposal fails. Lower threshold = easier to pass.
-            
-            - **Approval probability**: The chance each participating voter votes "for" (0.6 = 60%). Higher values increase the likelihood of proposals passing. This simulates voter sentiment toward the proposal.
-            
-            - **Participation probability**: The chance each voter participates at all (0.95 = 95%). Lower values reduce total participation, making quorum harder to meet. This simulates voter engagement.
-            
-            - **Voters**: Number of simulated voters with weights 1, 2, 3, ..., N. Total voting weight = sum of all weights. Higher weight voters have more influence.
-            
-            - **Run N predefined proposals**: Execute the first N proposals from the selected sequence. Proposals run sequentially and may be skipped if the active world doesn't match.
-            
-            - **Proposal sequence**: Choose between default sequence (4 forward proposals that complete the cycle) or interleaved sequence (all 6 proposals including reverse transitions, requires 8 proposals total to reach w4).
-            
-            **Proposal Types:**
-            - **Forward proposals** (prop-001 through prop-004): Advance through the cycle w1→w2→w3→w4→w1, demonstrating forward progression in the cyclic possible world model.
-            - **Reverse proposals** (prop-005, prop-006): Reverse the cycle (w2→w1, w3→w2), demonstrating that transitions can go backwards, highlighting the cyclic and reversible nature of possible worlds.
-            - **Guaranteed approval mode**: When enabled, all proposals that match the active world automatically pass (bypasses voting). Useful for testing state transitions without worrying about vote failures.
-            
-            **Understanding Proposal Success:**
-            - Proposals can **fail** even when they match the current active world. This happens when voting results don't meet quorum or threshold requirements.
-            - If a proposal **fails**, the active world **stays unchanged**, so subsequent proposals that don't match will be **skipped**.
-            - To increase success rate: raise approval probability, lower approval threshold, or lower quorum.
-            - **For guaranteed success**: Enable "Guaranteed approval mode" to automatically approve all matching proposals (useful for testing all 6 proposals in sequence).
-            - Check the **Simulation Log** below for detailed vote counts and failure reasons.
-            """
-        )
-    st.subheader("Parameters")
-    # Guaranteed approval mode is outside form so it's accessible for custom proposals too
-    guaranteed_approval = st.checkbox("Guaranteed approval mode", value=False,
-                                     help="If enabled, all proposals that match the active world will automatically pass (bypasses voting). Useful for testing state transitions.")
-    # Display parameter info outside form so it's always visible
-    st.info("💡 **Tip**: Sliders use step 0.05 (5% increments). Values range from 0.0 (0%) to 1.0 (100%). The current value is displayed on each slider as you adjust it.")
     
-    with st.form("run_form"):
-        seed = st.number_input("Seed", value=42, step=1, help="Random number generator seed for reproducible simulations. Different seeds produce different voting patterns.")
+    # Initialize session state for failure notifications
+    if "proposal_failures" not in st.session_state:
+        st.session_state.proposal_failures = []
+    if "proposal_successes" not in st.session_state:
+        st.session_state.proposal_successes = []
+    
+    # ============================================
+    # SIDEBAR: Core Voting Parameters
+    # ============================================
+    with st.sidebar:
+        st.header("⚙️ Core Voting Parameters")
+        st.markdown("Configure the essential voting parameters that control proposal outcomes.")
         
+        with st.expander("ℹ️ Parameter Guide"):
+            st.markdown(
+                """
+                **Quorum**: Minimum % of total voting weight that must participate (e.g., 0.5 = 50%).
+                
+                **Approval Threshold**: Minimum % of participating votes that must be "for" to pass. Requires **strict majority** (support > threshold), so ties fail.
+                
+                **Voter Approval Probability**: Chance each voter votes "for" (0.6 = 60%). Higher = more likely to pass.
+                
+                **Participation Probability**: Chance each voter participates (0.95 = 95%). Lower = harder to meet quorum.
+                
+                **Voters**: Number of simulated voters with weights 1, 2, 3, ..., N.
+                
+                **Seed**: Random seed for reproducible simulations.
+                """
+            )
+        
+        # Core parameters in sidebar
         quorum = st.slider(
             "Quorum", 
             0.0, 1.0, 0.5, 0.05,
-            help="The minimum percentage of total voting weight that must participate for a vote to be considered valid. Range: 0.0 (0%) to 1.0 (100%), step: 0.05 (5%). Example: 0.5 = 50% of all voters must participate. Lower values make it easier to meet the participation requirement. Current value is shown on the slider."
+            help="Minimum percentage of total voting weight that must participate (0.0-1.0). Example: 0.5 = 50%",
+            key="sidebar_quorum"
         )
+        st.caption(f"Current: {quorum:.0%}")
         
         threshold = st.slider(
-            "Approval threshold", 
+            "Approval Threshold", 
             0.0, 1.0, 0.5, 0.05,
-            help="The minimum percentage of participating voting weight that must vote 'for' to pass. Range: 0.0 (0%) to 1.0 (100%), step: 0.05 (5%). Requires strict majority (support > threshold), so a 50/50 tie fails when threshold is 0.5. Lower values make proposals easier to pass. Current value is shown on the slider."
+            help="Minimum percentage of participating votes that must be 'for' to pass. Requires strict majority (support > threshold).",
+            key="sidebar_threshold"
         )
+        st.caption(f"Current: {threshold:.0%}")
         
         approval_prob = st.slider(
-            "Approval probability", 
+            "Voter Approval Probability", 
             0.0, 1.0, 0.6, 0.05,
-            help="The probability that each participating voter will vote 'for' the proposal. Range: 0.0 (0%) to 1.0 (100%), step: 0.05 (5%). Higher values increase the likelihood of proposals passing. Example: 0.6 = 60% chance each voter approves. Current value is shown on the slider."
+            help="Probability each voter votes 'for' (0.0-1.0). Higher values increase pass rate.",
+            key="sidebar_approval_prob"
         )
+        st.caption(f"Current: {approval_prob:.0%}")
+        
+        st.divider()
         
         participation_prob = st.slider(
-            "Participation probability", 
+            "Participation Probability", 
             0.0, 1.0, 0.95, 0.05,
-            help="The probability that each voter will participate in the vote at all. Range: 0.0 (0%) to 1.0 (100%), step: 0.05 (5%). Lower values reduce total participation, making quorum harder to meet. Example: 0.95 = 95% chance each voter participates. Current value is shown on the slider."
+            help="Probability each voter participates (0.0-1.0). Lower values make quorum harder to meet.",
+            key="sidebar_participation_prob"
         )
-        voter_count = st.number_input("Voters", value=10, step=1, min_value=1, max_value=100,
-                                     help="Number of simulated voters. Each voter has a weight (1, 2, 3, ..., N). Total voting weight = sum of all voter weights.")
-        # Proposal sequence selection
+        st.caption(f"Current: {participation_prob:.0%}")
+        
+        voter_count = st.number_input(
+            "Number of Voters", 
+            value=10, step=1, min_value=1, max_value=100,
+            help="Number of simulated voters. Each has weight 1, 2, 3, ..., N.",
+            key="sidebar_voter_count"
+        )
+        
+        seed = st.number_input(
+            "Random Seed", 
+            value=42, step=1,
+            help="Random number generator seed for reproducible simulations.",
+            key="sidebar_seed"
+        )
+        
+        st.divider()
+        
+        guaranteed_approval = st.checkbox(
+            "Guaranteed Approval Mode", 
+            value=False,
+            help="If enabled, all matching proposals automatically pass (bypasses voting). Useful for testing transitions.",
+            key="sidebar_guaranteed"
+        )
+    
+    # ============================================
+    # MAIN AREA: 3-Step Workflow
+    # ============================================
+    
+    # Step 1: Set Parameters (already in sidebar, show summary)
+    st.header("📋 Step 1: Set Parameters")
+    col_param1, col_param2, col_param3 = st.columns(3)
+    with col_param1:
+        st.metric("Quorum", f"{quorum:.0%}")
+    with col_param2:
+        st.metric("Approval Threshold", f"{threshold:.0%}")
+    with col_param3:
+        st.metric("Voter Approval Probability", f"{approval_prob:.0%}")
+    st.info("💡 Adjust parameters in the **sidebar** on the left. Sliders use 5% increments (0.05 steps).")
+    
+    st.divider()
+    
+    # Step 2: Choose Proposals
+    st.header("📝 Step 2: Choose Proposals")
+    
+    with st.expander("ℹ️ Understanding Proposals"):
+        st.markdown(
+            """
+            **Proposal Types:**
+            - **Forward proposals** (prop-001 through prop-004): Advance through the cycle w1→w2→w3→w4→w1
+            - **Reverse proposals** (prop-005, prop-006): Reverse the cycle (w2→w1, w3→w2), demonstrating cyclic nature
+            
+            **Proposal Execution:**
+            - Proposals run **sequentially** in order
+            - Each proposal checks if the **current active world** matches its `from_world`
+            - If matched, the proposal runs a vote simulation
+            - If **passes** (quorum + threshold met), active world transitions to `to_world`
+            - If **fails**, active world stays unchanged and subsequent mismatched proposals are skipped
+            """
+        )
+    
+    with st.form("run_form"):
         proposal_sequence = st.radio(
-            "Proposal sequence",
+            "Proposal Sequence",
             ["Default (forward cycle + reverse)", "All 6 proposals (interleaved)"],
-            help="Default: 4 forward proposals (w1→w2→w3→w4→w1) complete the cycle, then 2 reverse proposals (only 4 can run). All 6: interleaved sequence demonstrating both forward and reverse transitions in the cyclic model (requires 8 proposals to reach all worlds including w4)."
+            help="Default: 4 forward proposals complete the cycle. All 6: interleaved sequence with reverse transitions (requires 8 proposals to reach w4).",
+            horizontal=True
         )
+        
         # Get the actual number of available proposals based on selected sequence
         if proposal_sequence == "All 6 proposals (interleaved)":
             all_proposals_list = all_six_proposals_sequence()
             default_steps = 8  # Need all 8 to reach w4
-            st.info("ℹ️ **Interleaved sequence note**: This sequence has 8 proposals total. You need to run all 8 proposals to reach w4. The default is set to 8.")
+            st.info("ℹ️ **Interleaved sequence**: 8 proposals total. Run all 8 to reach w4.")
         else:
             all_proposals_list = default_proposals()
             default_steps = 6
         available_proposals = len(all_proposals_list)
-        filter_matching_only = st.checkbox("Show only matching proposals", value=False,
-                                          help="If enabled, only proposals that match the current active world will be included in the run list. This filters out proposals that would be skipped.")
+        
+        filter_matching_only = st.checkbox(
+            "Show only matching proposals", 
+            value=False,
+            help="If enabled, only proposals that match the current active world will be included."
+        )
         
         # Show preview of matching proposals if filter is enabled
         if filter_matching_only:
@@ -504,11 +568,25 @@ with tab_run:
             else:
                 st.warning(f"⚠️ No proposals match current active world ({current_active_preview_label}). Filter will be ignored.")
         
-        n_steps = st.number_input("Run N predefined proposals", value=default_steps, step=1, min_value=1, max_value=available_proposals, 
-                                 help=f"Maximum {available_proposals} proposals are available in selected sequence" + (" (filtered to matching only)" if filter_matching_only else "") + (". Note: Interleaved sequence needs all 8 proposals to reach w4." if proposal_sequence == "All 6 proposals (interleaved)" else ""))
-        clear_history = st.checkbox("Clear history before running", value=True, 
-                                   help="If checked, resets history and active world to initial state before running the simulation")
-        submitted = st.form_submit_button("Run Simulation")
+        col_step2_1, col_step2_2 = st.columns(2)
+        with col_step2_1:
+            n_steps = st.number_input(
+                "Run N Predefined Proposals", 
+                value=default_steps, step=1, min_value=1, max_value=available_proposals, 
+                help=f"Maximum {available_proposals} proposals available" + (" (filtered to matching only)" if filter_matching_only else "") + ("." if proposal_sequence != "All 6 proposals (interleaved)" else ". Note: Interleaved sequence needs all 8 proposals to reach w4.")
+            )
+        with col_step2_2:
+            clear_history = st.checkbox(
+                "Clear history before running", 
+                value=True, 
+                help="If checked, resets history and active world to initial state (w1) before running."
+            )
+        
+        st.divider()
+        
+        # Step 3: Run Simulation
+        st.header("🚀 Step 3: Run Simulation")
+        submitted = st.form_submit_button("▶️ Run Simulation", type="primary", use_container_width=True)
 
     # Initialize log in session state if not exists
     if "sim_log" not in st.session_state:
@@ -518,8 +596,29 @@ with tab_run:
     if "log_update_counter" not in st.session_state:
         st.session_state.log_update_counter = 0
     
+    # Initialize notification storage
+    if "proposal_failures" not in st.session_state:
+        st.session_state.proposal_failures = []
+    if "proposal_successes" not in st.session_state:
+        st.session_state.proposal_successes = []
+    
+    # Real-time Feedback Area (above log) - only show if there are notifications
+    if st.session_state.proposal_failures or st.session_state.proposal_successes:
+        st.divider()
+        st.subheader("📊 Real-time Feedback")
+        
+        # Display failure notifications
+        if st.session_state.proposal_failures:
+            for failure in st.session_state.proposal_failures:
+                st.error(f"❌ **Proposal Failed**: {failure}")
+        
+        # Display success notifications (last 3)
+        if st.session_state.proposal_successes:
+            for success in st.session_state.proposal_successes[-3:]:
+                st.success(f"✅ **Proposal Passed**: {success}")
+    
     # Display log area
-    st.subheader("Simulation Log")
+    st.subheader("📋 Simulation Log")
     
     def add_log(message: str, level: str = "INFO"):
         """Add a message to the simulation log"""
@@ -529,6 +628,10 @@ with tab_run:
         st.session_state.log_update_counter += 1  # Increment to force refresh
 
     if submitted:
+        # Clear previous notifications
+        st.session_state.proposal_failures = []
+        st.session_state.proposal_successes = []
+        st.session_state.simulation_started = True
         # Load worlds for name formatting
         _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
         
@@ -661,7 +764,15 @@ with tab_run:
                 if new_active != dst:
                     add_log(f"ERROR: After {prop_id}, active world is {new_active_label} but should be {dst_label}", "ERROR")
                 else:
+                    success_msg = f"{prop_id} ({src_label} → {dst_label})"
                     add_log(f"✓ {prop_id} SUCCEEDED: {src_label} → {dst_label}{direction_label} (active world now: {new_active_label})", "SUCCESS")
+                    # Store success for notification
+                    if result:
+                        participating_weight = result.votes_for + result.votes_against
+                        support_pct = (result.votes_for / participating_weight * 100) if participating_weight > 0 else 0
+                        st.session_state.proposal_successes.append(f"{success_msg} - {support_pct:.1f}% support")
+                    else:
+                        st.session_state.proposal_successes.append(success_msg)
             else:
                 failed_count += 1
                 # Provide detailed failure information
@@ -674,21 +785,35 @@ with tab_run:
                     quorum_pct = float(quorum) * 100
                     
                     failure_reasons = []
+                    failure_msg_parts = []
+                    
                     if not result.quorum_met:
                         failure_reasons.append(f"Quorum not met ({participation_pct:.1f}% < {quorum_pct:.1f}%)")
+                        failure_msg_parts.append(f"Quorum not met ({participation_pct:.1f}% participation when {quorum_pct:.1f}% was required)")
+                    
                     if result.quorum_met and support_pct <= threshold_pct:
                         # Note: threshold requires strict majority (support > threshold), so ties fail
                         if support_pct == threshold_pct:
                             failure_reasons.append(f"Threshold not met ({support_pct:.1f}% = {threshold_pct:.1f}% - tie fails, requires >{threshold_pct:.1f}%)")
+                            failure_msg_parts.append(f"Threshold not met ({support_pct:.1f}% support when {threshold_pct:.1f}% was required - tie fails)")
                         else:
                             failure_reasons.append(f"Threshold not met ({support_pct:.1f}% < {threshold_pct:.1f}%)")
+                            failure_msg_parts.append(f"Threshold not met ({support_pct:.1f}% support when {threshold_pct:.1f}% was required)")
                     
                     reason = " | ".join(failure_reasons) if failure_reasons else "Unknown reason"
+                    failure_notification = f"{prop_id} ({src_label} → {dst_label}): {' | '.join(failure_msg_parts) if failure_msg_parts else reason}"
+                    
+                    # Add to log
                     add_log(f"FAILED {prop_id} ({src_label}→{dst_label}): {reason}", "ERROR")
                     add_log(f"  Votes: FOR={result.votes_for}, AGAINST={result.votes_against}, Total weight={total_weight}, Participating={participating_weight}", "ERROR")
                     add_log(f"  Requirements: Quorum={quorum_pct:.1f}% (met: {result.quorum_met}), Threshold={threshold_pct:.1f}% (support: {support_pct:.1f}%)", "ERROR")
+                    
+                    # Store failure for notification (will be displayed above log)
+                    st.session_state.proposal_failures.append(failure_notification)
                 else:
+                    failure_notification = f"{prop_id} ({src_label} → {dst_label}): No result returned"
                     add_log(f"FAILED {prop_id} ({src_label}→{dst_label}): No result returned", "ERROR")
+                    st.session_state.proposal_failures.append(failure_notification)
             
             last_result = (prop_id, src, dst, tx, result)
         
@@ -826,22 +951,37 @@ with tab_run:
                 quorum_pct = float(quorum) * 100
                 
                 failure_reasons = []
+                failure_msg_parts = []
+                
                 if not result.quorum_met:
                     failure_reasons.append(f"Quorum not met ({participation_pct:.1f}% < {quorum_pct:.1f}%)")
+                    failure_msg_parts.append(f"Quorum not met ({participation_pct:.1f}% participation when {quorum_pct:.1f}% was required)")
+                
                 if result.quorum_met and support_pct <= threshold_pct:
                     if support_pct == threshold_pct:
                         failure_reasons.append(f"Threshold not met ({support_pct:.1f}% = {threshold_pct:.1f}% - tie fails, requires >{threshold_pct:.1f}%)")
+                        failure_msg_parts.append(f"Threshold not met ({support_pct:.1f}% support when {threshold_pct:.1f}% was required - tie fails)")
                     else:
                         failure_reasons.append(f"Threshold not met ({support_pct:.1f}% < {threshold_pct:.1f}%)")
+                        failure_msg_parts.append(f"Threshold not met ({support_pct:.1f}% support when {threshold_pct:.1f}% was required)")
                 
                 reason = " | ".join(failure_reasons) if failure_reasons else "Unknown reason"
+                failure_notification = f"{prop_id_custom} ({from_w_label_display} → {to_w_label_display}): {' | '.join(failure_msg_parts) if failure_msg_parts else reason}"
+                
                 add_custom_log(f"❌ FAILED: {reason}", "ERROR")
                 add_custom_log(f"  Votes: FOR={result.votes_for}, AGAINST={result.votes_against}, Total weight={total_weight}, Participating={participating_weight}", "ERROR")
                 add_custom_log(f"  Requirements: Quorum={quorum_pct:.1f}% (met: {result.quorum_met}), Threshold={threshold_pct:.1f}% (support: {support_pct:.1f}%)", "ERROR")
+                
+                # Store failure for notification
+                st.session_state.proposal_failures.append(failure_notification)
+                # Also show immediate error notification
+                st.error(f"❌ **Proposal Failed**: {failure_notification}")
             else:
+                failure_notification = f"{prop_id_custom} ({from_w_label_display} → {to_w_label_display}): No result returned"
                 add_custom_log("❌ FAILED: No result returned", "ERROR")
+                st.session_state.proposal_failures.append(failure_notification)
+                st.error(f"❌ **Proposal Failed**: {failure_notification}")
             add_custom_log("=" * 60)
-            st.warning(f"Proposal failed. Quorum={result.quorum_met if result else 'unknown'}")
         else:
             # Proposal succeeded
             new_active = read_active().get("active_world", "w1")
@@ -850,11 +990,20 @@ with tab_run:
             add_custom_log(f"✅ SUCCEEDED: {from_w_label_display} → {to_w_label_display}", "SUCCESS")
             if result:
                 participating_weight = result.votes_for + result.votes_against
+                support_pct = (result.votes_for / participating_weight * 100) if participating_weight > 0 else 0
                 add_custom_log(f"  Votes: FOR={result.votes_for}, AGAINST={result.votes_against}, Participating={participating_weight}")
                 add_custom_log(f"  Transaction ID: {tx.tx_id}")
+                
+                # Store success for notification
+                success_msg = f"{prop_id_custom} ({from_w_label_display} → {to_w_label_display}) - {support_pct:.1f}% support"
+                st.session_state.proposal_successes.append(success_msg)
+            else:
+                success_msg = f"{prop_id_custom} ({from_w_label_display} → {to_w_label_display})"
+                st.session_state.proposal_successes.append(success_msg)
+            
             add_custom_log(f"  Active world updated to: {new_active_label}")
             add_custom_log("=" * 60)
-            st.success(f"TX {tx.tx_id}: {from_w_label_display} → {to_w_label_display} passed.")
+            st.success(f"✅ **Proposal Passed**: TX {tx.tx_id}: {from_w_label_display} → {to_w_label_display}")
         
         st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
         st.rerun()
@@ -875,6 +1024,21 @@ with tab_graph:
         View the Kripke model as a directed graph. The active world is highlighted in yellow.
         """
     )
+    
+    # Show info about selected transition if one is highlighted
+    if "selected_transition" in st.session_state and st.session_state.selected_transition:
+        sel = st.session_state.selected_transition
+        from_w = sel.get("from_world", "?")
+        to_w = sel.get("to_world", "?")
+        proposal_id = sel.get("proposal_id", "?")
+        try:
+            _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
+            from_label = format_world_label(from_w, worlds_dict)
+            to_label = format_world_label(to_w, worlds_dict)
+        except Exception:
+            from_label = from_w
+            to_label = to_w
+        st.info(f"🔗 **Linked from Timeline**: The edge {from_label} → {to_label} will be highlighted in red below. **Note**: Edge highlighting is only visible in **Interactive (with hover tooltips)** view. Select a different transition in the **Governance History** tab to highlight a different edge.")
     with st.expander("ℹ️ What is a Kripke Model?"):
         st.markdown(
             """
@@ -951,21 +1115,49 @@ with tab_graph:
             except Exception:
                 pass
         
-        # Prepare edge traces
+        # Check for selected transition to highlight
+        highlighted_edge = None
+        if "selected_transition" in st.session_state and st.session_state.selected_transition:
+            sel = st.session_state.selected_transition
+            from_w = sel.get("from_world")
+            to_w = sel.get("to_world")
+            if from_w and to_w and (from_w, to_w) in store.G.edges():
+                highlighted_edge = (from_w, to_w)
+        
+        # Prepare edge traces - separate highlighted edge from others
         edge_x = []
         edge_y = []
+        highlighted_edge_x = []
+        highlighted_edge_y = []
+        
         for edge in store.G.edges():
             x0, y0 = pos[edge[0]]
             x1, y1 = pos[edge[1]]
-            edge_x.extend([x0, x1, None])
-            edge_y.extend([y0, y1, None])
+            if edge == highlighted_edge:
+                highlighted_edge_x.extend([x0, x1, None])
+                highlighted_edge_y.extend([y0, y1, None])
+            else:
+                edge_x.extend([x0, x1, None])
+                edge_y.extend([y0, y1, None])
         
+        # Regular edges trace
         edge_trace = go.Scatter(
             x=edge_x, y=edge_y,
             line=dict(width=2, color='#888'),
             hoverinfo='none',
             mode='lines'
         )
+        
+        # Highlighted edge trace (if any)
+        highlighted_trace = None
+        if highlighted_edge_x:
+            highlighted_trace = go.Scatter(
+                x=highlighted_edge_x, y=highlighted_edge_y,
+                line=dict(width=5, color='#ff4444'),  # Red, thicker line
+                hoverinfo='none',
+                mode='lines',
+                name='Selected Transition'
+            )
         
         # Prepare node traces with tooltips
         node_x = []
@@ -1031,10 +1223,15 @@ with tab_graph:
             )
         )
         
-        fig = go.Figure(data=[edge_trace, node_trace],
+        # Build figure data - include highlighted trace if it exists
+        figure_data = [edge_trace, node_trace]
+        if highlighted_trace:
+            figure_data.insert(0, highlighted_trace)  # Add highlighted edge first so it's on top
+        
+        fig = go.Figure(data=figure_data,
                        layout=go.Layout(
                            title='',
-                           showlegend=False,
+                           showlegend=bool(highlighted_trace),  # Show legend if there's a highlighted edge
                            hovermode='closest',
                            margin=dict(b=20, l=5, r=5, t=40),
                            annotations=[dict(
@@ -1052,18 +1249,58 @@ with tab_graph:
         
         st.plotly_chart(fig, use_container_width=True)
         
+        # Show highlighted edge info
+        if highlighted_edge:
+            sel = st.session_state.selected_transition
+            from_w = sel.get("from_world", "?")
+            to_w = sel.get("to_world", "?")
+            proposal_id = sel.get("proposal_id", "?")
+            try:
+                _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
+                from_label = format_world_label(from_w, worlds_dict)
+                to_label = format_world_label(to_w, worlds_dict)
+            except Exception:
+                from_label = from_w
+                to_label = to_w
+            st.success(f"🔴 **Highlighted Edge**: {from_label} → {to_label} (Proposal: {proposal_id}) - This transition was selected from the Governance History tab.")
+        
     elif graph_view == "Interactive (with hover tooltips)" and not PLOTLY_AVAILABLE:
         st.warning("⚠️ Plotly is not installed. Install it with: `pip install plotly` to enable interactive graphs with hover tooltips.")
+        # Check if there's a selected transition and warn that highlighting won't work
+        if "selected_transition" in st.session_state and st.session_state.selected_transition:
+            st.warning("⚠️ **Note**: Edge highlighting is only available in Interactive mode. Switch to **Interactive (with hover tooltips)** view to see the selected transition highlighted.")
         st.image(graph_png_bytes(store.G, active_world, labels, history_path))
     else:
+        # Static Image mode - warn if there's a selected transition
+        if "selected_transition" in st.session_state and st.session_state.selected_transition:
+            sel = st.session_state.selected_transition
+            from_w = sel.get("from_world", "?")
+            to_w = sel.get("to_world", "?")
+            try:
+                _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
+                from_label = format_world_label(from_w, worlds_dict)
+                to_label = format_world_label(to_w, worlds_dict)
+            except Exception:
+                from_label = from_w
+                to_label = to_w
+            st.warning(f"⚠️ **Note**: Edge highlighting is only visible in **Interactive (with hover tooltips)** mode. You have selected {from_label} → {to_label} from the Governance History tab. Switch to Interactive mode to see it highlighted in red.")
         st.image(graph_png_bytes(store.G, active_world, labels, history_path))
     
-    # Add legend explaining node colors
+    # Add legend explaining node colors and edge highlighting
     st.markdown("**Node Colors:**")
     col1, col2, col3 = st.columns(3)
     col1.markdown("🟡 **Yellow**: Active world (current state)")
     col2.markdown("🟢 **Green**: Visited world (has been reached by a successful proposal)")
     col3.markdown("🔵 **Blue**: Unvisited world (not yet reached)")
+    
+    # Add edge legend if there's a highlighted edge (only in Interactive mode)
+    if "selected_transition" in st.session_state and st.session_state.selected_transition:
+        if graph_view == "Interactive (with hover tooltips)" and PLOTLY_AVAILABLE:
+            st.markdown("**Edge Highlighting:**")
+            st.markdown("🔴 **Red thick edge**: Selected transition from Governance History tab (shows the direct impact of a successful vote). **Only visible in Interactive mode.**")
+        else:
+            st.markdown("**Edge Highlighting:**")
+            st.markdown("🔴 **Red thick edge**: Available only in **Interactive (with hover tooltips)** mode. Switch to Interactive mode to see the selected transition highlighted.")
     
     st.divider()
     
@@ -1201,6 +1438,87 @@ with tab_timeline:
     data = history
     if data:
         st.dataframe(data, width='stretch', hide_index=True, key=f"timeline_df_{history_signature}")
+    
+    # Transition Selection for Graph Highlighting
+    st.divider()
+    st.subheader("🔗 Link to Graph Visualization")
+    st.markdown(
+        """
+        **Select a transition below to highlight it in the Graph tab.** 
+        This shows the direct impact of the vote by visually highlighting the edge (W2 → W3) that was successfully traversed.
+        
+        **Note**: Edge highlighting is only visible when viewing the graph in **Interactive (with hover tooltips)** mode in the Kripke Model Explorer tab.
+        """
+    )
+    
+    if history:
+        # Load worlds for formatting
+        try:
+            _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
+        except Exception:
+            worlds_dict = {}
+        
+        # Create options for selectbox
+        transition_options = []
+        for idx, tx in enumerate(history, 1):
+            from_world = tx.get("from_world", "?")
+            to_world = tx.get("to_world", "?")
+            proposal_id = tx.get("proposal_id", f"TX-{idx}")
+            from_label = format_world_label(from_world, worlds_dict)
+            to_label = format_world_label(to_world, worlds_dict)
+            transition_options.append(f"TX {idx}: {proposal_id} ({from_label} → {to_label})")
+        
+        # Initialize session state for selected transition
+        if "selected_transition_idx" not in st.session_state:
+            st.session_state.selected_transition_idx = None
+        
+        # Get current selection index (default to last transition if none selected)
+        default_idx = len(history) - 1 if st.session_state.selected_transition_idx is None else st.session_state.selected_transition_idx
+        
+        col_select, col_button = st.columns([3, 1])
+        
+        with col_select:
+            selected_option = st.selectbox(
+                "Select a transition to highlight in the Graph tab:",
+                transition_options,
+                index=default_idx if default_idx < len(transition_options) else 0,
+                help="Choose a transition from the history to see it highlighted in the Kripke Model Explorer tab",
+                key=f"transition_select_{history_signature}"
+            )
+        
+        with col_button:
+            st.write("")  # Spacing
+            st.write("")  # Spacing
+            if st.button("📍 View in Graph", type="primary", use_container_width=True):
+                # Extract index from selected option
+                selected_idx = transition_options.index(selected_option)
+                st.session_state.selected_transition_idx = selected_idx
+                st.session_state.selected_transition = {
+                    "from_world": history[selected_idx].get("from_world"),
+                    "to_world": history[selected_idx].get("to_world"),
+                    "proposal_id": history[selected_idx].get("proposal_id"),
+                    "index": selected_idx
+                }
+                st.success(f"✅ Transition selected! Switch to the **Kripke Model Explorer** tab to see the highlighted edge.")
+                st.info("💡 **Tip**: The selected transition will remain highlighted until you select a different one or clear the selection.")
+        
+        # Show current selection info
+        if "selected_transition" in st.session_state and st.session_state.selected_transition:
+            sel = st.session_state.selected_transition
+            from_w = sel.get("from_world", "?")
+            to_w = sel.get("to_world", "?")
+            from_label = format_world_label(from_w, worlds_dict)
+            to_label = format_world_label(to_w, worlds_dict)
+            st.info(f"📌 **Currently selected**: {from_label} → {to_label} (Proposal: {sel.get('proposal_id', '?')})")
+        
+        # Clear selection button
+        if "selected_transition" in st.session_state and st.session_state.selected_transition:
+            if st.button("🗑️ Clear Selection", use_container_width=False):
+                st.session_state.selected_transition = None
+                st.session_state.selected_transition_idx = None
+                st.rerun()
+    else:
+        st.info("No transitions available yet. Run a simulation to generate transitions that can be highlighted in the graph.")
     
     # Visualizing Voting Results section
     st.divider()
