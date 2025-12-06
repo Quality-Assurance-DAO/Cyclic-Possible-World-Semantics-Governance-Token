@@ -50,22 +50,18 @@ st.set_page_config(
     page_icon=page_icon_path
 )
 
-# Display logo in sidebar if available
+# Display logo next to title in header
 if LOGO_PATH and os.path.exists(LOGO_PATH):
-    with st.sidebar:
-        st.image(LOGO_PATH, use_container_width=True)
-        st.markdown("---")  # Separator line
+    col_logo, col_title = st.columns([1, 10])
+    with col_logo:
+        st.image(LOGO_PATH, width=80)  # Smaller size to fit next to title
+    with col_title:
+        st.title("PWSGT – Cyclic Possible World Governance (Simulation)")
 elif LOGO_PATH:
     st.sidebar.warning(f"Logo not found at: {LOGO_PATH}")
-
-# Optional: Display logo at top of main page
-# Uncomment the following lines if you want a logo above the title
-# if LOGO_PATH and os.path.exists(LOGO_PATH):
-#     col1, col2, col3 = st.columns([1, 2, 1])
-#     with col2:
-#         st.image(LOGO_PATH, width=200)  # Adjust width as needed
-
-st.title("PWSGT – Cyclic Possible World Governance (Simulation)")
+    st.title("PWSGT – Cyclic Possible World Governance (Simulation)")
+else:
+    st.title("PWSGT – Cyclic Possible World Governance (Simulation)")
 
 
 def read_active():
@@ -132,130 +128,65 @@ def format_world_label(world_id: str, worlds: Dict = None) -> str:
     return world_id
 
 
-tab_about, tab_overview, tab_run, tab_graph, tab_timeline, tab_data, tab_modal = st.tabs([
-    "About CPWS", "Overview", "Configure & Run", "Graph", "Timeline", "Data", "Modal Logic Explorer",
+tab_overview, tab_run, tab_graph, tab_timeline, tab_data, tab_modal, tab_about = st.tabs([
+    "System Status & Setup", "Simulation & Control", "Kripke Model Explorer", "Governance History", "Raw Data Dump", "Modal Logic Explorer", "About CPWS",
 ])
 
 
 with tab_about:
     st.header("About Cyclic Possible World Semantics (CPWS)")
     
+    # High-Level Overview
     st.markdown(
         """
-        This dashboard simulates a **Cyclic Possible World Semantics** governance system. 
-        This section explains the core concepts in novice-friendly language, establishing their real-world utility for DAO governance.
-        """
-    )
-    
-    st.subheader("Core Concepts Explained")
-    
-    st.markdown("### Possible World")
-    st.info(
-        """
-        **A defined state or a future version of the DAO/protocol** (e.g., "World A has Feature X activated," "World B has Parameter Y set to 10").
-        
-        Each world represents a specific configuration of governance rules, features, and parameters. Think of it as a **snapshot of how the DAO is configured at a particular point in time**.
-        
-        **Real-world analogy**: Just like software can have different versions (v1.0, v2.0, v3.0), DAOs can have different governance configurations. Each world is like a tested, documented version that can be referenced and returned to.
-        """
-    )
-    
-    st.markdown("### Kripke Semantics / Accessibility Relation")
-    st.info(
-        """
-        **The "Rulebook" or "Roadmap" that defines which state (World) can legally follow another.**
-        
-        An edge from W1 to W2 means W2 is a possible transition from W1. This creates a graph structure showing all valid paths the governance system can take.
-        
-        **Real-world analogy**: Just like a roadmap shows which cities you can travel to from your current location, the accessibility relation shows which governance states you can transition to from your current state. Not every governance change should be possible from every state—the accessibility relation ensures that transitions follow logical rules and prevent invalid or dangerous state changes.
-        """
-    )
-    
-    st.markdown("### Cyclic")
-    st.info(
-        """
-        **The system can revisit or correct past states.**
-        
-        Governance is not a linear path; a DAO can always loop back to a previous configuration if needed, reflecting the philosophy of governance as a continuous loop.
-        
-        **Real-world analogy**: If a new governance change doesn't work out, the community can vote to revert to a previous, proven configuration. The cyclic structure acknowledges that governance is iterative and that sometimes going "backwards" is the right forward move. This supports governance flexibility—real systems need the ability to correct mistakes, revert changes, and iterate on solutions.
+        **CPWS combines modal logic with governance to create a resilient, non-linear DAO roadmap.**
         """
     )
     
     st.divider()
     
-    st.subheader("Why This Matters for Real-World DAO Governance")
+    # Concept Cards
+    st.subheader("Core Concepts")
     
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-        **📦 Version Control for Governance**
-        
-        Possible Worlds enable version control for governance. Just like software can have different versions, DAOs can have different governance configurations. Each world represents a tested, documented state that can be referenced and returned to.
-        """)
-    
-    with col2:
-        st.markdown("""
-        **📜 Constitutional Constraints**
-        
-        Accessibility Relations provide constitutional constraints. Not every governance change should be possible from every state. The accessibility relation ensures that transitions follow logical rules and prevent invalid or dangerous state changes.
-        """)
-    
-    with col3:
-        st.markdown("""
-        **🔄 Governance Flexibility**
-        
-        Cyclic structure supports governance flexibility. Real governance systems need the ability to correct mistakes, revert changes, and iterate on solutions. The cyclic model reflects this reality, allowing DAOs to learn from experience and adapt.
-        """)
+    # Concept Card 1: World (Governance State)
+    with st.container():
+        st.markdown("### 🌍 World (Governance State)")
+        st.markdown("A defined state or snapshot of the protocol's current parameters.")
+        with st.expander("Detailed Explanation"):
+            st.markdown(
+                """
+                Each world (W1, W2, etc.) holds a set of propositions (p1, p2, etc.) that are either true or false. 
+                In governance, this means a feature is ON or OFF.
+                """
+            )
     
     st.divider()
     
-    st.subheader("How the Simulation Works")
-    
-    st.markdown("""
-    This simulation demonstrates how governance proposals can move a DAO through different possible worlds:
-    
-    1. **Start in a World**: The system begins in a base governance state (w1 - Base Governance)
-    2. **Propose Transitions**: Governance proposals attempt to move from one world to another (e.g., w1 → w2)
-    3. **Vote on Proposals**: Voters participate and vote "for" or "against" each proposal
-    4. **Check Requirements**: Proposals must meet two requirements:
-       - **Quorum**: Enough voting weight must participate
-       - **Approval Threshold**: Enough participating votes must be "for"
-    5. **Transition or Stay**: If both requirements are met, the active world changes. If not, the system stays in the current world
-    6. **Cycle Through Worlds**: The system can cycle through worlds, demonstrating the cyclic nature of possible world governance
-    """)
+    # Concept Card 2: Accessibility Relation (The Roadmap)
+    with st.container():
+        st.markdown("### 🗺️ Accessibility Relation (The Roadmap)")
+        st.markdown("The \"Rulebook\" that defines which state can legally follow another.")
+        with st.expander("Detailed Explanation"):
+            st.markdown(
+                """
+                Represented by the graph's edges (W1 → W2). A transition is only possible if an edge exists. 
+                If no edge exists, the governance can never move between those two states.
+                """
+            )
     
     st.divider()
     
-    st.subheader("Key Terms Quick Reference")
-    
-    with st.expander("📚 Expand to see all key terms"):
-        st.markdown("""
-        - **World**: A governance configuration (node) identified by a `world_id` (e.g., `w1`). Each world has a name like "Base Governance" or "Quorum Enabled".
-        
-        - **Transition**: A directed change from one world to another (edge), optionally cyclic. A transition represents a governance proposal.
-        
-        - **Active World**: The current world in effect; updated after a passed proposal.
-        
-        - **Kripke Model**: A graph (worlds + edges) with a valuation of propositions. Defines all possible states and which transitions are allowed.
-        
-        - **Accessibility Relation**: The "rulebook" that defines which state can legally follow another. Creates the graph structure.
-        
-        - **Cyclic**: The system can revisit past states. Governance is not linear—it can loop back to previous configurations.
-        
-        - **Quorum**: The minimum percentage of total voting weight that must participate for a vote to be valid (e.g., 0.5 = 50%).
-        
-        - **Approval Threshold**: The minimum percentage of participating weight that must vote "for" to pass (e.g., 0.5 = simple majority). Requires strict majority (support > threshold).
-        
-        - **Proposal**: A governance action that attempts to transition from one world to another. Must pass quorum and threshold checks to succeed.
-        """)
-    
-    st.divider()
-    
-    st.markdown("""
-    **💡 Tip**: Start with the **Overview** tab to see the current state, then go to **Configure & Run** to experiment with different parameters and see how they affect proposal success rates.
-    """)
+    # Concept Card 3: Cyclic Nature (The Continuous Loop)
+    with st.container():
+        st.markdown("### 🔄 Cyclic Nature (The Continuous Loop)")
+        st.markdown("The system can revisit or correct past states, preventing permanent \"dead ends.\"")
+        with st.expander("Detailed Explanation"):
+            st.markdown(
+                """
+                The graph includes a cycle (W4 → W1) and reverse transitions (W2 → W1). This is crucial for governance, 
+                as it means the community can vote to revert an unsuccessful change.
+                """
+            )
 
 
 with tab_overview:
@@ -331,7 +262,7 @@ with tab_overview:
             st.rerun()
     
     with col3:
-        st.markdown("**Next Steps:**\n\n1. Go to **Configure & Run** to run a simulation\n2. Check **Graph** tab to see the visual representation\n3. View **Timeline** to see transition history")
+        st.markdown("**Next Steps:**\n\n1. Go to **Simulation & Control** to run a simulation\n2. Check **Kripke Model Explorer** tab to see the visual representation\n3. View **Governance History** to see transition history")
     
     st.divider()
     
@@ -367,7 +298,7 @@ with tab_overview:
         **Why it matters:**
         - Only proposals that match the active world can run (e.g., if active world is w2, only proposals starting from w2 can execute)
         - The active world determines which governance rules are currently in effect
-        - You can see the active world highlighted in **yellow** in the Graph tab
+        - You can see the active world highlighted in **yellow** in the Kripke Model Explorer tab
         """)
     
     with col2:
@@ -409,7 +340,7 @@ with tab_overview:
         **Why it matters:**
         - Transition count shows how many successful governance changes have occurred
         - Each transition represents a community decision that changed the governance state
-        - You can see all transitions in the **Timeline** tab
+        - You can see all transitions in the **Governance History** tab
         - The history of transitions shows the governance journey over time
         """)
     
@@ -417,9 +348,9 @@ with tab_overview:
         st.metric("📈 Total Transitions", transition_count)
         
         if transition_count == 0:
-            st.info("**No transitions yet.** Run a simulation in the **Configure & Run** tab to create transitions!")
+            st.info("**No transitions yet.** Run a simulation in the **Simulation & Control** tab to create transitions!")
         elif transition_count == 1:
-            st.success(f"**1 transition** recorded. Check the Timeline tab to see it!")
+            st.success(f"**1 transition** recorded. Check the Governance History tab to see it!")
         else:
             st.success(f"**{transition_count} transitions** recorded. The system has evolved through {transition_count} governance changes!")
     
@@ -459,10 +390,11 @@ with tab_overview:
     with st.expander("💡 Need More Help?"):
         st.markdown("""
         - **About CPWS Tab**: Learn about the core concepts and real-world utility
-        - **Configure & Run Tab**: Set parameters and run simulations
-        - **Graph Tab**: Visualize the Kripke model and see which worlds have been visited
-        - **Timeline Tab**: View the sequence of transitions over time
-        - **Data Tab**: Inspect raw JSON files and truth tables
+        - **System Status & Setup Tab**: View current state and initialize the system
+        - **Simulation & Control Tab**: Set parameters and run simulations
+        - **Kripke Model Explorer Tab**: Visualize the Kripke model and see which worlds have been visited
+        - **Governance History Tab**: View the sequence of transitions over time
+        - **Raw Data Dump Tab**: Inspect raw JSON files and truth tables
         """)
 
 
@@ -1810,6 +1742,6 @@ with tab_modal:
     
     except Exception as e:
         st.error(f"Error loading model: {str(e)}")
-        st.info("💡 Make sure the graph is initialized. Go to the **Overview** tab and click 'Initialize Example Graph'.")
+        st.info("💡 Make sure the graph is initialized. Go to the **System Status & Setup** tab and click 'Initialize Example Graph'.")
 
 
