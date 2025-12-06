@@ -173,8 +173,21 @@ with tab_run:
         else:
             all_proposals_list = default_proposals()
         available_proposals = len(all_proposals_list)
+        filter_matching_only = st.checkbox("Show only matching proposals", value=False,
+                                          help="If enabled, only proposals that match the current active world will be included in the run list. This filters out proposals that would be skipped.")
+        
+        # Show preview of matching proposals if filter is enabled
+        if filter_matching_only:
+            current_active_preview = read_active().get("active_world", "w1")
+            matching_preview = [(pid, src, dst) for pid, src, dst in all_proposals_list if src == current_active_preview]
+            if matching_preview:
+                matching_ids = [p[0] for p in matching_preview]
+                st.info(f"📋 Filter active: {len(matching_preview)} proposal(s) match current active world ({current_active_preview}): {matching_ids}")
+            else:
+                st.warning(f"⚠️ No proposals match current active world ({current_active_preview}). Filter will be ignored.")
+        
         n_steps = st.number_input("Run N predefined proposals", value=6, step=1, min_value=1, max_value=available_proposals, 
-                                 help=f"Maximum {available_proposals} proposals are available in selected sequence")
+                                 help=f"Maximum {available_proposals} proposals are available in selected sequence" + (" (filtered to matching only)" if filter_matching_only else ""))
         clear_history = st.checkbox("Clear history before running", value=True, 
                                    help="If checked, resets history and active world to initial state before running the simulation")
         submitted = st.form_submit_button("Run Simulation")
@@ -222,6 +235,17 @@ with tab_run:
             all_proposals = all_six_proposals_sequence()
         else:
             all_proposals = default_proposals()
+        
+        # Filter to only matching proposals if requested
+        if filter_matching_only:
+            current_active = read_active().get("active_world", "w1")
+            matching_proposals = [(pid, src, dst) for pid, src, dst in all_proposals if src == current_active]
+            if matching_proposals:
+                all_proposals = matching_proposals
+                add_log(f"Filtered to {len(matching_proposals)} matching proposal(s) (active world: {current_active})")
+            else:
+                add_log(f"WARNING: No proposals match current active world ({current_active}). Running all proposals instead.", "WARNING")
+        
         max_available = len(all_proposals)
         requested_steps = int(n_steps)
         
@@ -243,31 +267,19 @@ with tab_run:
         
         for prop_id, src, dst in proposals:
             # Check current active world before running proposal - read fresh each time
-            # Read the file path directly to debug
-            active_path = os.path.join(examples_dir, "active_world.json")
-            add_log(f"Reading active world from: {active_path}")
-            
             # Read multiple times to ensure we get the latest data (helps with file system caching)
             current_active_data = read_active()
             current_active = current_active_data.get("active_world", "w1")
-            add_log(f"First read: active_world = {current_active}, full data = {current_active_data}")
             
             # Double-check by reading again
             time.sleep(0.01)  # Slightly longer delay to ensure file system operations complete
             current_active_data2 = read_active()
             current_active2 = current_active_data2.get("active_world", "w1")
-            add_log(f"Second read: active_world = {current_active2}, full data = {current_active_data2}")
             
             if current_active != current_active2:
                 # If readings differ, use the second one (more recent)
                 current_active = current_active2
                 add_log(f"⚠️ Active world reading changed: first read={current_active_data.get('active_world')}, second read={current_active2}", "WARNING")
-            
-            # Also check history to see what the last transition was
-            history = read_history()
-            if history:
-                last_tx = history[-1]
-                add_log(f"Last transaction in history: {last_tx.get('proposal_id')} {last_tx.get('from_world')} → {last_tx.get('to_world')}")
             
             # Determine proposal direction for display
             is_reverse = "-reverse" in prop_id
@@ -278,14 +290,14 @@ with tab_run:
             elif is_forward:
                 direction_label = " [FORWARD - cycle-advancing]"
             
-            # Debug output
-            add_log(f"Processing {prop_id}: Current active world = {current_active}, Proposal requires = {src}{direction_label}")
-            
-            # Validate that the proposal's from_world matches the current active world
+            # Validate that the proposal's from_world matches the current active world FIRST
             if src != current_active:
                 add_log(f"SKIPPING {prop_id} ({src}→{dst}): Current active world is {current_active}, but proposal requires {src}{direction_label}", "WARNING")
                 skipped_count += 1
                 continue
+            
+            # Only log "Processing" for proposals that match and will actually run
+            add_log(f"Processing {prop_id}: Current active world = {current_active}, Proposal requires = {src}{direction_label} ✓ MATCH")
             
             if guaranteed_approval:
                 add_log(f"Running {prop_id}: {src} → {dst}{direction_label} (GUARANTEED APPROVAL MODE - bypassing voting)")
