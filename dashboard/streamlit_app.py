@@ -61,12 +61,19 @@ def read_history():
 
 
 def reset_history():
+    """Reset history and active world to initial state (w1)."""
     history_path = os.path.join(examples_dir, "history.json")
     active_path = os.path.join(examples_dir, "active_world.json")
+    # Clear history
     with open(history_path, 'w', encoding='utf-8') as f:
         json.dump([], f)
+        f.flush()
+        os.fsync(f.fileno())
+    # Reset active world to w1 (default/initial state)
     with open(active_path, 'w', encoding='utf-8') as f:
         json.dump({"active_world": "w1", "last_tx": None, "updated_at": None}, f)
+        f.flush()
+        os.fsync(f.fileno())
 
 
 tab_overview, tab_run, tab_graph, tab_timeline, tab_data = st.tabs([
@@ -110,12 +117,19 @@ with tab_overview:
         st.success("Initialized worlds and graph in examples/.")
     if c2.button("Reset History", use_container_width=True):
         reset_history()
+        # Verify reset worked - active world should always be w1 after reset
+        verify_active = read_active().get("active_world", "w1")
+        verify_history = read_history()
+        if verify_active == "w1" and len(verify_history) == 0:
+            st.success(f"Cleared history and reset active world to w1 (default initial state).")
+        else:
+            st.error(f"Reset may have failed. Active world: {verify_active} (expected w1), History entries: {len(verify_history)}")
         st.session_state.history_reset = True
         st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
         st.rerun()
     
     if st.session_state.get("history_reset", False):
-        st.success("Cleared history and reset active world.")
+        # Message already shown above
         st.session_state.history_reset = False
 
 
@@ -227,6 +241,12 @@ with tab_run:
                 add_log(f"ERROR: History was not cleared properly. Still has {len(verify_history)} entries.", "ERROR")
             else:
                 add_log("History cleared successfully.", "SUCCESS")
+            # Verify active world was reset to w1
+            verify_active = read_active().get("active_world", "w1")
+            if verify_active != "w1":
+                add_log(f"ERROR: Active world was not reset to w1. Current value: {verify_active}", "ERROR")
+            else:
+                add_log(f"Active world reset to w1 (default initial state).", "SUCCESS")
         
         rng = random.Random(int(seed))
         voters = build_voters(int(voter_count))
