@@ -134,15 +134,20 @@ with tab_run:
             - **Participation probability**: Chance each voter participates at all (0.95 = 95%). Lower values reduce total participation, making quorum harder to meet.
             - **Voters**: Number of simulated voters with weights 1, 2, 3, ..., N.
             - **Run N predefined proposals**: Execute the first N proposals from the example sequence (w1→w2, w2→w3, w3→w4, w4→w1, w2→w1, w3→w2).
+            - **Guaranteed approval mode**: When enabled, all proposals that match the active world automatically pass (bypasses voting). Useful for testing state transitions without worrying about vote failures.
             
             **Understanding Proposal Success:**
             - Proposals can **fail** even when they match the current active world. This happens when voting results don't meet quorum or threshold requirements.
             - If a proposal **fails**, the active world **stays unchanged**, so subsequent proposals that don't match will be **skipped**.
             - To increase success rate: raise approval probability, lower approval threshold, or lower quorum.
+            - **For guaranteed success**: Enable "Guaranteed approval mode" to automatically approve all matching proposals (useful for testing all 6 proposals in sequence).
             - Check the **Simulation Log** below for detailed vote counts and failure reasons.
             """
         )
     st.subheader("Parameters")
+    # Guaranteed approval mode is outside form so it's accessible for custom proposals too
+    guaranteed_approval = st.checkbox("Guaranteed approval mode", value=False,
+                                     help="If enabled, all proposals that match the active world will automatically pass (bypasses voting). Useful for testing state transitions.")
     with st.form("run_form"):
         seed = st.number_input("Seed", value=42, step=1)
         quorum = st.slider("Quorum", 0.0, 1.0, 0.5, 0.05)
@@ -247,7 +252,10 @@ with tab_run:
                 skipped_count += 1
                 continue
             
-            add_log(f"Running {prop_id}: {src} → {dst}")
+            if guaranteed_approval:
+                add_log(f"Running {prop_id}: {src} → {dst} (GUARANTEED APPROVAL MODE - bypassing voting)")
+            else:
+                add_log(f"Running {prop_id}: {src} → {dst}")
             tx, result = run_single_proposal(
                 examples_dir=examples_dir,
                 proposal_id=prop_id,
@@ -259,6 +267,7 @@ with tab_run:
                 approval_probability=float(approval_prob),
                 participation_probability=float(participation_prob),
                 voters=voters,
+                guaranteed_approval=guaranteed_approval,
             )
             
             if tx is not None:
@@ -334,6 +343,7 @@ with tab_run:
     from_w = c1.selectbox("From world", world_ids, index=0)
     to_w = c2.selectbox("To world", [w for w in world_ids if w != from_w], index=0)
     prop_id_custom = c3.text_input("Proposal ID", value="prop-custom")
+    # Note: guaranteed_approval from form is available in this scope
     if st.button("Run Proposal"):
         rng = random.Random(int(seed))
         voters = build_voters(int(voter_count))
@@ -348,6 +358,7 @@ with tab_run:
             approval_probability=float(approval_prob),
             participation_probability=float(participation_prob),
             voters=voters,
+            guaranteed_approval=guaranteed_approval,
         )
         if tx is None:
             st.warning(f"Proposal failed. Quorum={result.quorum_met}")

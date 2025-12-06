@@ -1,15 +1,15 @@
 [
   {
-    "tx_id": "e9f17e16-272a-4252-b997-daa0ee02286c",
+    "tx_id": "143f51de-b62b-462f-997d-a15be5ac4819",
     "proposal_id": "prop-001",
     "from_world": "w1",
     "to_world": "w2",
     "arweave_from": "ar://placeholder-f3fd6bcffee04ede",
     "arweave_to": "ar://placeholder-771a751421198fa5",
-    "votes_for": 52,
-    "votes_against": 3,
+    "votes_for": 55,
+    "votes_against": 0,
     "quorum": 0.5,
-    "timestamp": "2025-12-06T02:07:22Z",
+    "timestamp": "2025-12-06T02:17:17Z",
     "signers": [
       "gov_key1",
       "gov_key2"
@@ -17,16 +17,16 @@
     "notes": "simulation run"
   },
   {
-    "tx_id": "49a0d8a1-60b0-491f-a3de-7c99a8da34e5",
+    "tx_id": "2967564f-0f91-4a5b-a110-c4208ae53e75",
     "proposal_id": "prop-002",
     "from_world": "w2",
     "to_world": "w3",
     "arweave_from": "ar://placeholder-771a751421198fa5",
     "arweave_to": "ar://placeholder-f171a675a969b18d",
-    "votes_for": 22,
-    "votes_against": 22,
+    "votes_for": 55,
+    "votes_against": 0,
     "quorum": 0.5,
-    "timestamp": "2025-12-06T02:07:23Z",
+    "timestamp": "2025-12-06T02:17:17Z",
     "signers": [
       "gov_key1",
       "gov_key2"
@@ -34,16 +34,33 @@
     "notes": "simulation run"
   },
   {
-    "tx_id": "21910b3b-e973-4f3e-9c8d-4f4e1316e6aa",
+    "tx_id": "77a68c9b-7360-4735-adc5-3418622648ab",
     "proposal_id": "prop-003",
     "from_world": "w3",
     "to_world": "w4",
     "arweave_from": "ar://placeholder-f171a675a969b18d",
     "arweave_to": "ar://placeholder-8f315265169706a9",
-    "votes_for": 28,
-    "votes_against": 27,
+    "votes_for": 55,
+    "votes_against": 0,
     "quorum": 0.5,
-    "timestamp": "2025-12-06T02:07:23Z",
+    "timestamp": "2025-12-06T02:17:17Z",
+    "signers": [
+      "gov_key1",
+      "gov_key2"
+    ],
+    "notes": "simulation run"
+  },
+  {
+    "tx_id": "f1ef48d2-8358-4c05-8422-1eb87df8672c",
+    "proposal_id": "prop-004",
+    "from_world": "w4",
+    "to_world": "w1",
+    "arweave_from": "ar://placeholder-8f315265169706a9",
+    "arweave_to": "ar://placeholder-f3fd6bcffee04ede",
+    "votes_for": 55,
+    "votes_against": 0,
+    "quorum": 0.5,
+    "timestamp": "2025-12-06T02:17:17Z",
     "signers": [
       "gov_key1",
       "gov_key2"

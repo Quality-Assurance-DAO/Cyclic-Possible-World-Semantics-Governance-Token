@@ -9,7 +9,7 @@ from .archiver import MockArchiver
 from .cardano_sim import CardanoSimulator
 from .graph_store import GraphStore
 from .model import KripkeModel
-from .voting import Voter, Proposal, simulate_votes_random, evaluate_proposal
+from .voting import Voter, Proposal, VoteResult, simulate_votes_random, evaluate_proposal
 
 
 def ensure_examples_dirs(root: str) -> Tuple[str, str]:
@@ -57,12 +57,29 @@ def run_single_proposal(
     approval_probability: float,
     participation_probability: float,
     voters: Dict[str, Voter],
+    guaranteed_approval: bool = False,
 ):
     proposal = Proposal(proposal_id=proposal_id, from_world=from_world, to_world=to_world, quorum=quorum, threshold=threshold)
-    votes = simulate_votes_random(voters, rng, approval_probability=approval_probability, participation_probability=participation_probability)
-    result = evaluate_proposal(proposal, voters, votes)
-    if not result.passed:
-        return None, result
+    
+    if guaranteed_approval:
+        # Bypass voting - create a successful result with all voters approving
+        total_weight = sum(v.weight for v in voters.values())
+        # Simulate 100% participation and 100% approval
+        votes_for = total_weight
+        votes_against = 0
+        result = VoteResult(
+            votes_for=votes_for,
+            votes_against=votes_against,
+            total_possible_weight=total_weight,
+            quorum_met=True,
+            passed=True,
+        )
+    else:
+        votes = simulate_votes_random(voters, rng, approval_probability=approval_probability, participation_probability=participation_probability)
+        result = evaluate_proposal(proposal, voters, votes)
+        if not result.passed:
+            return None, result
+    
     archiver = MockArchiver()
     chain = CardanoSimulator(examples_dir)
     src_data = json.load(open(os.path.join(examples_dir, "worlds", f"{from_world}.json"), 'r', encoding='utf-8'))
