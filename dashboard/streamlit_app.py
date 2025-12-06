@@ -106,8 +106,8 @@ def format_world_label(world_id: str, worlds: Dict = None) -> str:
     return world_id
 
 
-tab_about, tab_overview, tab_run, tab_graph, tab_timeline, tab_data = st.tabs([
-    "About CPWS", "Overview", "Configure & Run", "Graph", "Timeline", "Data",
+tab_about, tab_overview, tab_run, tab_graph, tab_timeline, tab_data, tab_modal = st.tabs([
+    "About CPWS", "Overview", "Configure & Run", "Graph", "Timeline", "Data", "Modal Logic Explorer",
 ])
 
 
@@ -1459,5 +1459,331 @@ with tab_data:
             )
     else:
         st.info("No valuation.json yet. Initialize the graph to generate the truth table.")
+
+
+with tab_modal:
+    st.header("🔮 Modal Logic Explorer")
+    
+    st.markdown(
+        """
+        Explore modal logic formulas in the Kripke model. Evaluate formulas like **□p** (necessarily p) 
+        and **◇p** (possibly p) to see which worlds satisfy the conditions.
+        """
+    )
+    
+    with st.expander("ℹ️ Understanding Modal Logic"):
+        st.markdown(
+            """
+            **Modal Operators:**
+            
+            - **□p** (Box p, "Necessarily p"): True in world w if p is true in **all** reachable worlds from w.
+            - **◇p** (Diamond p, "Possibly p"): True in world w if p is true in **at least one** reachable world from w.
+            
+            **Examples:**
+            
+            - **□p₁**: "Is p₁ true in all worlds we can reach from the current world?"
+            - **◇p₃**: "Is it possible to reach a world where p₃ is true?"
+            - **p₂**: "Is p₂ true in the current world?" (simple proposition)
+            
+            **Conventions:**
+            - If a world has no successors, □p is **vacuously true** (all zero successors satisfy p).
+            - If a world has no successors, ◇p is **false** (no successor satisfies p).
+            """
+        )
+    
+    # Load model and worlds
+    try:
+        store, worlds, model = load_worlds_and_valuation(examples_dir)
+        props = sorted(list(model.valuation.keys()))
+        world_ids = sorted(worlds.keys())
+        
+        # Get active world
+        active = read_active()
+        default_start_world = active.get("active_world", "w1")
+        
+        st.divider()
+        
+        # Formula input section
+        st.subheader("📝 Enter Modal Formula")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            formula_input = st.text_input(
+                "Modal Formula",
+                value="◇p3",
+                help="Enter a modal formula. Examples: □p1, ◇p2, p3, □◇p4"
+            )
+        
+        with col2:
+            start_world = st.selectbox(
+                "Starting World",
+                world_ids,
+                index=world_ids.index(default_start_world) if default_start_world in world_ids else 0,
+                help="The world from which to evaluate the formula"
+            )
+        
+        # Parse and evaluate formula
+        def parse_modal_formula(formula: str) -> tuple:
+            """Parse a modal formula. Returns (operator, proposition) or (None, proposition) for simple props.
+            
+            Supports:
+            - □p or Box p or necessarily p
+            - ◇p or Diamond p or possibly p
+            - p (simple proposition)
+            """
+            formula = formula.strip()
+            
+            # Check for Box (□)
+            if formula.startswith("□") or formula.startswith("Box ") or formula.startswith("necessarily "):
+                if formula.startswith("□"):
+                    prop = formula[1:].strip()
+                elif formula.startswith("Box "):
+                    prop = formula[4:].strip()
+                else:  # necessarily
+                    prop = formula[11:].strip()
+                return ("□", prop)
+            
+            # Check for Diamond (◇)
+            if formula.startswith("◇") or formula.startswith("Diamond ") or formula.startswith("possibly "):
+                if formula.startswith("◇"):
+                    prop = formula[1:].strip()
+                elif formula.startswith("Diamond "):
+                    prop = formula[8:].strip()
+                else:  # possibly
+                    prop = formula[9:].strip()
+                return ("◇", prop)
+            
+            # Simple proposition
+            return (None, formula)
+        
+        def evaluate_formula(model: KripkeModel, formula: str, start_world: str) -> tuple:
+            """Evaluate a modal formula. Returns (result, satisfying_worlds, explanation)."""
+            operator, prop = parse_modal_formula(formula)
+            
+            if operator == "□":
+                # Necessarily: true if prop is true in all successors
+                result = model.is_necessary(prop, start_world)
+                successors = model.successors(start_world)
+                if not successors:
+                    satisfying_worlds = set()
+                    explanation = f"□{prop} is **vacuously true** in {start_world} (no successors)."
+                else:
+                    satisfying_worlds = {w for w in successors if model.is_true(prop, w)}
+                    if result:
+                        explanation = f"□{prop} is **true** in {start_world}: {prop} is true in all successors {successors}."
+                    else:
+                        failing = successors - satisfying_worlds
+                        explanation = f"□{prop} is **false** in {start_world}: {prop} is false in {failing}."
+                return (result, satisfying_worlds, explanation)
+            
+            elif operator == "◇":
+                # Possibly: true if prop is true in at least one successor
+                result = model.is_possible(prop, start_world)
+                successors = model.successors(start_world)
+                if not successors:
+                    satisfying_worlds = set()
+                    explanation = f"◇{prop} is **false** in {start_world} (no successors)."
+                else:
+                    satisfying_worlds = {w for w in successors if model.is_true(prop, w)}
+                    if result:
+                        explanation = f"◇{prop} is **true** in {start_world}: {prop} is true in {satisfying_worlds}."
+                    else:
+                        explanation = f"◇{prop} is **false** in {start_world}: {prop} is false in all successors {successors}."
+                return (result, satisfying_worlds, explanation)
+            
+            else:
+                # Simple proposition: true if prop is true in start_world
+                result = model.is_true(prop, start_world)
+                if result:
+                    satisfying_worlds = {start_world}
+                    explanation = f"{prop} is **true** in {start_world}."
+                else:
+                    satisfying_worlds = set()
+                    explanation = f"{prop} is **false** in {start_world}."
+                return (result, satisfying_worlds, explanation)
+        
+        # Evaluate button
+        if st.button("🔍 Evaluate Formula", type="primary", use_container_width=True):
+            if not formula_input:
+                st.error("Please enter a formula.")
+            else:
+                try:
+                    result, satisfying_worlds, explanation = evaluate_formula(model, formula_input, start_world)
+                    
+                    # Display result
+                    st.divider()
+                    st.subheader("📊 Evaluation Result")
+                    
+                    col_result1, col_result2 = st.columns([1, 2])
+                    
+                    with col_result1:
+                        if result:
+                            st.success(f"**Result: TRUE** ✓")
+                        else:
+                            st.error(f"**Result: FALSE** ✗")
+                    
+                    with col_result2:
+                        st.markdown(explanation)
+                    
+                    # Show which worlds satisfy the condition
+                    if satisfying_worlds:
+                        st.markdown(f"**Worlds where condition is satisfied:** {', '.join(sorted(satisfying_worlds))}")
+                    else:
+                        st.info("No worlds satisfy this condition.")
+                    
+                    # Store result for visualization
+                    st.session_state.modal_result = {
+                        "formula": formula_input,
+                        "start_world": start_world,
+                        "result": result,
+                        "satisfying_worlds": satisfying_worlds,
+                        "explanation": explanation
+                    }
+                    
+                except Exception as e:
+                    st.error(f"Error evaluating formula: {str(e)}")
+                    st.info("💡 **Tip**: Make sure the formula is valid. Examples: □p1, ◇p2, p3")
+        
+        # Visualization section
+        st.divider()
+        st.subheader("🗺️ Visual Representation")
+        
+        # Check if we have a result to visualize
+        if "modal_result" in st.session_state:
+            modal_result = st.session_state.modal_result
+            
+            # Create graph visualization with highlighted worlds
+            if PLOTLY_AVAILABLE:
+                import networkx as nx
+                
+                # Get layout positions
+                pos = nx.spring_layout(store.G, seed=7)
+                
+                # Prepare edge traces
+                edge_x = []
+                edge_y = []
+                for edge in store.G.edges():
+                    x0, y0 = pos[edge[0]]
+                    x1, y1 = pos[edge[1]]
+                    edge_x.extend([x0, x1, None])
+                    edge_y.extend([y0, y1, None])
+                
+                edge_trace = go.Scatter(
+                    x=edge_x, y=edge_y,
+                    line=dict(width=2, color='#888'),
+                    hoverinfo='none',
+                    mode='lines'
+                )
+                
+                # Prepare node traces with highlighting
+                node_x = []
+                node_y = []
+                node_text = []
+                node_info = []
+                node_colors = []
+                
+                satisfying_worlds = modal_result["satisfying_worlds"]
+                start_world = modal_result["start_world"]
+                
+                for node in store.G.nodes():
+                    x, y = pos[node]
+                    node_x.append(x)
+                    node_y.append(y)
+                    
+                    world = worlds[node]
+                    true_props = [p for p in props if model.is_true(p, node)]
+                    
+                    # Create tooltip
+                    tooltip_parts = [
+                        f"<b>{node} ({world.name})</b>",
+                        f"<br>True propositions: {', '.join(true_props) if true_props else 'None'}",
+                    ]
+                    
+                    node_text.append(f"{node}")
+                    node_info.append("".join(tooltip_parts))
+                    
+                    # Color coding:
+                    # - Purple: Starting world
+                    # - Green: Satisfying worlds (where condition is met)
+                    # - Yellow: Active world (if different from start)
+                    # - Blue: Other worlds
+                    if node == start_world:
+                        node_colors.append("#9b59b6")  # Purple for starting world
+                    elif node in satisfying_worlds:
+                        node_colors.append("#28a745")  # Green for satisfying worlds
+                    elif node == active.get("active_world", "w1"):
+                        node_colors.append("#ffcc00")  # Yellow for active world
+                    else:
+                        node_colors.append("#87ceeb")  # Blue for other worlds
+                
+                node_trace = go.Scatter(
+                    x=node_x, y=node_y,
+                    mode='markers+text',
+                    hoverinfo='text',
+                    text=node_text,
+                    textposition="middle center",
+                    textfont=dict(size=12, color='black'),
+                    hovertext=node_info,
+                    marker=dict(
+                        size=40,
+                        color=node_colors,
+                        line=dict(width=3, color='black')
+                    )
+                )
+                
+                fig = go.Figure(data=[edge_trace, node_trace],
+                               layout=go.Layout(
+                                   title=f"Modal Formula: {modal_result['formula']} (from {start_world})",
+                                   showlegend=False,
+                                   hovermode='closest',
+                                   margin=dict(b=20, l=5, r=5, t=60),
+                                   annotations=[dict(
+                                       text="Hover over nodes to see details",
+                                       showarrow=False,
+                                       xref="paper", yref="paper",
+                                       x=0.005, y=-0.002,
+                                       xanchor="left", yanchor="bottom",
+                                       font=dict(size=12, color="#666")
+                                   )],
+                                   xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                   yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                   plot_bgcolor='white'
+                               ))
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Legend
+                st.markdown("**Node Colors:**")
+                col_leg1, col_leg2, col_leg3, col_leg4 = st.columns(4)
+                col_leg1.markdown("🟣 **Purple**: Starting world")
+                col_leg2.markdown("🟢 **Green**: Worlds satisfying condition")
+                col_leg3.markdown("🟡 **Yellow**: Active world")
+                col_leg4.markdown("🔵 **Blue**: Other worlds")
+                
+            else:
+                st.warning("⚠️ Plotly is not installed. Install it with: `pip install plotly` to enable interactive graph visualization.")
+        else:
+            st.info("👆 Enter a formula and click 'Evaluate Formula' to see the visualization.")
+        
+        # Available propositions
+        st.divider()
+        st.subheader("📚 Available Propositions")
+        st.markdown(f"The following propositions are available in the model: **{', '.join(props)}**")
+        
+        with st.expander("See proposition valuations"):
+            valuation_data = []
+            for world_id in world_ids:
+                world_label = format_world_label(world_id, worlds)
+                row = {"World": world_label}
+                for prop in props:
+                    is_true = model.is_true(prop, world_id)
+                    row[prop] = "✓" if is_true else "✗"
+                valuation_data.append(row)
+            st.dataframe(valuation_data, width='stretch', use_container_width=True, hide_index=False)
+    
+    except Exception as e:
+        st.error(f"Error loading model: {str(e)}")
+        st.info("💡 Make sure the graph is initialized. Go to the **Overview** tab and click 'Initialize Example Graph'.")
 
 
