@@ -40,14 +40,15 @@ def draw_graph_png(G: nx.DiGraph, active_world: str, labels: Dict[str, str], out
             node_size=1500, edgecolors='black', linewidths=2)
     nx.draw_networkx_labels(G, pos, labels={n: labels.get(n, n) for n in G.nodes()}, font_size=8)
     
-    # Add legend
+    # Add legend outside the plot area to avoid obscuring graph
     from matplotlib.patches import Patch
     legend_elements = [
         Patch(facecolor='#ffcc00', edgecolor='black', label='Active world'),
         Patch(facecolor='#90ee90', edgecolor='black', label='Visited world'),
         Patch(facecolor='#87ceeb', edgecolor='black', label='Unvisited world')
     ]
-    plt.legend(handles=legend_elements, loc='upper left', fontsize=8)
+    # Position legend outside plot area (bbox_to_anchor places it outside)
+    plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.02, 1), fontsize=8, framealpha=0.9)
     
     plt.tight_layout()
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
@@ -154,20 +155,21 @@ def graph_png_bytes(G: nx.DiGraph, active_world: str, labels: Dict[str, str], hi
             node_size=1500, edgecolors='black', linewidths=2)
     nx.draw_networkx_labels(G, pos, labels={n: labels.get(n, n) for n in G.nodes()}, font_size=8)
     
-    # Add legend
+    # Add legend outside the plot area to avoid obscuring graph
     from matplotlib.patches import Patch
     legend_elements = [
         Patch(facecolor='#ffcc00', edgecolor='black', label='Active world'),
         Patch(facecolor='#90ee90', edgecolor='black', label='Visited world'),
         Patch(facecolor='#87ceeb', edgecolor='black', label='Unvisited world')
     ]
-    plt.legend(handles=legend_elements, loc='upper left', fontsize=8)
+    # Position legend outside plot area (bbox_to_anchor places it outside)
+    plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.02, 1), fontsize=8, framealpha=0.9)
     
     try:
         plt.tight_layout()
     except Exception:
-        # If tight_layout fails, use subplots_adjust as fallback
-        plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
+        # If tight_layout fails, use subplots_adjust as fallback with extra right margin for legend
+        plt.subplots_adjust(left=0.1, right=0.75, top=0.9, bottom=0.1)
     buf = BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
