@@ -9,12 +9,46 @@ import matplotlib.pyplot as plt
 import networkx as nx
 
 
-def draw_graph_png(G: nx.DiGraph, active_world: str, labels: Dict[str, str], outfile: str) -> None:
+def draw_graph_png(G: nx.DiGraph, active_world: str, labels: Dict[str, str], outfile: str, history_path: str = None) -> None:
     pos = nx.spring_layout(G, seed=7)
     plt.figure(figsize=(8, 6))
-    node_colors = ["#ffcc00" if n == active_world else "#87ceeb" for n in G.nodes()]
-    nx.draw(G, pos, with_labels=False, node_color=node_colors, arrows=True, arrowstyle='-|>')
+    
+    # Determine which worlds have been visited (from history)
+    visited_worlds = set()
+    if history_path and os.path.exists(history_path):
+        try:
+            with open(history_path, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+                # Collect all worlds that have been visited (as from_world or to_world)
+                for h in history:
+                    visited_worlds.add(h.get("from_world"))
+                    visited_worlds.add(h.get("to_world"))
+        except Exception:
+            pass  # If history can't be read, just continue without visited indication
+    
+    # Color nodes: yellow for active, green for visited (but not active), blue for unvisited
+    node_colors = []
+    for n in G.nodes():
+        if n == active_world:
+            node_colors.append("#ffcc00")  # Yellow - active world
+        elif n in visited_worlds:
+            node_colors.append("#90ee90")  # Light green - visited but not currently active
+        else:
+            node_colors.append("#87ceeb")  # Light blue - unvisited
+    
+    nx.draw(G, pos, with_labels=False, node_color=node_colors, arrows=True, arrowstyle='-|>',
+            node_size=1500, edgecolors='black', linewidths=2)
     nx.draw_networkx_labels(G, pos, labels={n: labels.get(n, n) for n in G.nodes()}, font_size=8)
+    
+    # Add legend
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='#ffcc00', edgecolor='black', label='Active world'),
+        Patch(facecolor='#90ee90', edgecolor='black', label='Visited world'),
+        Patch(facecolor='#87ceeb', edgecolor='black', label='Unvisited world')
+    ]
+    plt.legend(handles=legend_elements, loc='upper left', fontsize=8)
+    
     plt.tight_layout()
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
     plt.savefig(outfile)
@@ -89,12 +123,46 @@ def draw_timeline(history_path: str, outfile: str) -> None:
     plt.close()
 
 
-def graph_png_bytes(G: nx.DiGraph, active_world: str, labels: Dict[str, str]) -> bytes:
+def graph_png_bytes(G: nx.DiGraph, active_world: str, labels: Dict[str, str], history_path: str = None) -> bytes:
     pos = nx.spring_layout(G, seed=7)
     plt.figure(figsize=(8, 6))
-    node_colors = ["#ffcc00" if n == active_world else "#87ceeb" for n in G.nodes()]
-    nx.draw(G, pos, with_labels=False, node_color=node_colors, arrows=True, arrowstyle='-|>')
+    
+    # Determine which worlds have been visited (from history)
+    visited_worlds = set()
+    if history_path and os.path.exists(history_path):
+        try:
+            with open(history_path, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+                # Collect all worlds that have been visited (as from_world or to_world)
+                for h in history:
+                    visited_worlds.add(h.get("from_world"))
+                    visited_worlds.add(h.get("to_world"))
+        except Exception:
+            pass  # If history can't be read, just continue without visited indication
+    
+    # Color nodes: yellow for active, green for visited (but not active), blue for unvisited
+    node_colors = []
+    for n in G.nodes():
+        if n == active_world:
+            node_colors.append("#ffcc00")  # Yellow - active world
+        elif n in visited_worlds:
+            node_colors.append("#90ee90")  # Light green - visited but not currently active
+        else:
+            node_colors.append("#87ceeb")  # Light blue - unvisited
+    
+    nx.draw(G, pos, with_labels=False, node_color=node_colors, arrows=True, arrowstyle='-|>', 
+            node_size=1500, edgecolors='black', linewidths=2)
     nx.draw_networkx_labels(G, pos, labels={n: labels.get(n, n) for n in G.nodes()}, font_size=8)
+    
+    # Add legend
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='#ffcc00', edgecolor='black', label='Active world'),
+        Patch(facecolor='#90ee90', edgecolor='black', label='Visited world'),
+        Patch(facecolor='#87ceeb', edgecolor='black', label='Unvisited world')
+    ]
+    plt.legend(handles=legend_elements, loc='upper left', fontsize=8)
+    
     try:
         plt.tight_layout()
     except Exception:

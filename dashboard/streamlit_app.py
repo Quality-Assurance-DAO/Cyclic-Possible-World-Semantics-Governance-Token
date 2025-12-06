@@ -452,7 +452,8 @@ with tab_graph:
             - **Nodes (circles)**: Worlds (w1, w2, w3, w4) with their truth assignments shown as {p1, p2, ...}.
             - **Edges (arrows)**: Possible transitions between worlds.
             - **Yellow node**: The currently active world.
-            - **Blue nodes**: Other worlds.
+            - **Green nodes**: Worlds that have been visited by successful proposals (but not currently active).
+            - **Blue nodes**: Worlds that have not yet been visited.
             - **Layout**: Spring layout (may vary on refresh).
             """
         )
@@ -467,7 +468,15 @@ with tab_graph:
     store, worlds, model = load_worlds_and_valuation(examples_dir)
     props = sorted(list(model.valuation.keys()))
     labels = {w: model.summarize_world_label(w, props) for w in worlds}
-    st.image(graph_png_bytes(store.G, active_world, labels))
+    history_path = os.path.join(examples_dir, "history.json")
+    st.image(graph_png_bytes(store.G, active_world, labels, history_path))
+    
+    # Add legend explaining node colors
+    st.markdown("**Node Colors:**")
+    col1, col2, col3 = st.columns(3)
+    col1.markdown("🟡 **Yellow**: Active world (current state)")
+    col2.markdown("🟢 **Green**: Visited world (has been reached by a successful proposal)")
+    col3.markdown("🔵 **Blue**: Unvisited world (not yet reached)")
 
 
 with tab_timeline:

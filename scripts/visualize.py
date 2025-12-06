@@ -44,7 +44,8 @@ def main() -> None:
 
     # Draw graph
     out_graph = os.path.join(examples_dir, "graph.png")
-    draw_graph_png(store.G, active_world, labels, out_graph)
+    history_path = os.path.join(examples_dir, "history.json")
+    draw_graph_png(store.G, active_world, labels, out_graph, history_path)
 
     # Draw timeline
     out_timeline = os.path.join(examples_dir, "timeline.png")
