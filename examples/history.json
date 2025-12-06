@@ -1,15 +1,15 @@
 [
   {
-    "tx_id": "48a7f869-bee7-4d83-9666-d2ac83bb02a9",
+    "tx_id": "1894d5a8-4706-4e6f-a11f-a52e4aa44857",
     "proposal_id": "prop-custom",
-    "from_world": "w1",
-    "to_world": "w3",
-    "arweave_from": "ar://placeholder-6190fe2d1ad58e90",
-    "arweave_to": "ar://placeholder-cd70b5f0c4cedfe4",
+    "from_world": "w4",
+    "to_world": "w1",
+    "arweave_from": "ar://placeholder-6dea29048d1406b8",
+    "arweave_to": "ar://placeholder-6190fe2d1ad58e90",
     "votes_for": 52,
     "votes_against": 3,
     "quorum": 0.5,
-    "timestamp": "2025-12-06T03:13:05Z",
+    "timestamp": "2025-12-06T03:15:42Z",
     "signers": [
       "gov_key1",
       "gov_key2"
