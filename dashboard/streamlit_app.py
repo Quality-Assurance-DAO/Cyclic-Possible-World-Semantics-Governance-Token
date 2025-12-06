@@ -5,6 +5,7 @@ import json
 import os
 import random
 import sys
+import time
 from typing import Dict
 
 import streamlit as st
@@ -48,8 +49,12 @@ def read_history():
 
 
 def reset_history():
-    json.dump([], open(os.path.join(examples_dir, "history.json"), 'w', encoding='utf-8'))
-    json.dump({"active_world": "w1", "last_tx": None, "updated_at": None}, open(os.path.join(examples_dir, "active_world.json"), 'w', encoding='utf-8'))
+    history_path = os.path.join(examples_dir, "history.json")
+    active_path = os.path.join(examples_dir, "active_world.json")
+    with open(history_path, 'w', encoding='utf-8') as f:
+        json.dump([], f)
+    with open(active_path, 'w', encoding='utf-8') as f:
+        json.dump({"active_world": "w1", "last_tx": None, "updated_at": None}, f)
 
 
 tab_overview, tab_run, tab_graph, tab_timeline, tab_data = st.tabs([
@@ -93,7 +98,13 @@ with tab_overview:
         st.success("Initialized worlds and graph in examples/.")
     if c2.button("Reset History", use_container_width=True):
         reset_history()
+        st.session_state.history_reset = True
+        st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
+        st.rerun()
+    
+    if st.session_state.get("history_reset", False):
         st.success("Cleared history and reset active world.")
+        st.session_state.history_reset = False
 
 
 with tab_run:
@@ -123,9 +134,14 @@ with tab_run:
         participation_prob = st.slider("Participation probability", 0.0, 1.0, 0.95, 0.05)
         voter_count = st.number_input("Voters", value=10, step=1, min_value=1, max_value=100)
         n_steps = st.number_input("Run N predefined proposals", value=6, step=1, min_value=1, max_value=20)
+        clear_history = st.checkbox("Clear history before running", value=True, 
+                                   help="If checked, resets history and active world to initial state before running the simulation")
         submitted = st.form_submit_button("Run Simulation")
 
     if submitted:
+        # Clear history if requested
+        if clear_history:
+            reset_history()
         rng = random.Random(int(seed))
         voters = build_voters(int(voter_count))
         proposals = default_proposals()[: int(n_steps)]
@@ -150,6 +166,8 @@ with tab_run:
                 st.warning(f"Last proposal {prop_id} {src}->{dst} failed. Quorum={result.quorum_met}")
             else:
                 st.success(f"Last TX {tx.tx_id}: {src}->{dst} passed.")
+        st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
+        st.rerun()
 
     st.divider()
     st.subheader("Run Custom Proposal")
@@ -178,6 +196,8 @@ with tab_run:
             st.warning(f"Proposal failed. Quorum={result.quorum_met}")
         else:
             st.success(f"TX {tx.tx_id}: {from_w}->{to_w} passed.")
+        st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
+        st.rerun()
 
 
 with tab_graph:
@@ -196,6 +216,8 @@ with tab_graph:
             - **Layout**: Spring layout (may vary on refresh).
             """
         )
+    # Force refresh by including refresh counter in computation
+    _ = st.session_state.get("refresh_counter", 0)
     store, worlds, model = load_worlds_and_valuation(examples_dir)
     props = sorted(list(model.valuation.keys()))
     labels = {w: model.summarize_world_label(w, props) for w in worlds}
@@ -218,12 +240,36 @@ with tab_timeline:
             - **Table below**: Detailed transaction records with votes, quorum, timestamps.
             """
         )
-    tl_bytes = timeline_png_bytes(os.path.join(examples_dir, "history.json"))
+    # Force refresh - read history fresh each time
+    refresh_counter = st.session_state.get("refresh_counter", 0)
+    history = read_history()
+    history_count = len(history)
+    
+    # Get file modification time to detect changes
+    history_path = os.path.join(examples_dir, "history.json")
+    file_mtime = 0
+    if os.path.exists(history_path):
+        file_mtime = os.path.getmtime(history_path)
+    
+    # Create signature that changes with history content and file modification
+    history_signature = f"{history_count}_{refresh_counter}_{file_mtime}"
+    if history:
+        # Include last few proposal IDs in signature for uniqueness
+        last_props = "_".join([h.get("proposal_id", "") for h in history[-3:]])
+        history_signature += f"_{hash(last_props)}"
+    
+    # Force Streamlit to recognize this as a new computation
+    _ = history_signature
+    
+    # Always read from file and regenerate timeline
+    tl_bytes = timeline_png_bytes(history_path)
+    
     if tl_bytes:
-        st.image(tl_bytes)
+        # Display image - Streamlit should regenerate due to signature change
+        st.image(tl_bytes, use_column_width=True)
     else:
         st.info("No timeline yet. Run a simulation to generate transitions.")
-    data = read_history()
+    data = history
     if data:
         st.dataframe(data, use_container_width=True, hide_index=True)
 

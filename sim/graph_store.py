@@ -24,7 +24,7 @@ class GraphStore:
         if not os.path.isdir(worlds_dir):
             os.makedirs(worlds_dir, exist_ok=True)
         for fname in os.listdir(worlds_dir):
-            if not fname.endswith('.json'):
+            if not fname.endswith('.json') or fname.endswith('.metadata.json'):
                 continue
             path = os.path.join(worlds_dir, fname)
             with open(path, 'r', encoding='utf-8') as f:
@@ -64,9 +64,9 @@ class GraphStore:
 
     def save_graph_summary(self, outfile: str) -> None:
         summary = {
-            'nodes': list(self.G.nodes()),
-            'edges': [(u, v) for u, v in self.G.edges()],
-            'cycles': self.simple_cycles(),
+            'nodes': sorted(list(self.G.nodes())),
+            'edges': sorted([(u, v) for u, v in self.G.edges()]),
+            'cycles': sorted([sorted(cycle) for cycle in self.simple_cycles()]),
         }
         os.makedirs(os.path.dirname(outfile), exist_ok=True)
         with open(outfile, 'w', encoding='utf-8') as f:
