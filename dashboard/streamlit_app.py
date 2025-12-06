@@ -266,7 +266,7 @@ with tab_timeline:
     
     if tl_bytes:
         # Display image - Streamlit should regenerate due to signature change
-        st.image(tl_bytes, use_column_width=True)
+        st.image(tl_bytes, use_container_width=True)
     else:
         st.info("No timeline yet. Run a simulation to generate transitions.")
     data = history
