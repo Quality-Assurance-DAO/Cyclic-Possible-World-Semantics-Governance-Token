@@ -2,6 +2,24 @@
 
 This repository provides a runnable Python 3.9+ simulation of a cyclic possible-world governance system with Kripke semantics, voting, token-like world metadata, simulated on-chain transitions (Cardano), off-chain storage placeholders (Arweave), and visualization.
 
+## Understanding the Core Concepts
+
+This section explains the key academic terms used in this project in novice-friendly language, establishing their real-world utility for DAO governance.
+
+| Technical Term | Novice-Friendly Analogy/Explanation |
+|----------------|--------------------------------------|
+| **Possible World** | A defined state or a future version of the DAO/protocol (e.g., "World A has Feature X activated," "World B has Parameter Y set to 10"). Each world represents a specific configuration of governance rules, features, and parameters. Think of it as a snapshot of how the DAO is configured at a particular point in time. |
+| **Kripke Semantics / Accessibility Relation** | The "Rulebook" or "Roadmap" that defines which state (World) can legally follow another. An edge from W1 to W2 means W2 is a possible transition from W1. This creates a graph structure showing all valid paths the governance system can take. Just like a roadmap shows which cities you can travel to from your current location, the accessibility relation shows which governance states you can transition to from your current state. |
+| **Cyclic** | The system can revisit or correct past states. Governance is not a linear path; a DAO can always loop back to a previous configuration if needed, reflecting the philosophy of governance as a continuous loop. This means if a new governance change doesn't work out, the community can vote to revert to a previous, proven configuration. The cyclic structure acknowledges that governance is iterative and that sometimes going "backwards" is the right forward move. |
+
+### Why This Matters for Real-World DAO Governance
+
+- **Possible Worlds** enable **version control for governance**: Just like software can have different versions, DAOs can have different governance configurations. Each world represents a tested, documented state that can be referenced and returned to.
+
+- **Accessibility Relations** provide **constitutional constraints**: Not every governance change should be possible from every state. The accessibility relation ensures that transitions follow logical rules and prevent invalid or dangerous state changes.
+
+- **Cyclic structure** supports **governance flexibility**: Real governance systems need the ability to correct mistakes, revert changes, and iterate on solutions. The cyclic model reflects this reality, allowing DAOs to learn from experience and adapt.
+
 ## Quickstart
 
 1) Create a virtualenv and install dependencies:
