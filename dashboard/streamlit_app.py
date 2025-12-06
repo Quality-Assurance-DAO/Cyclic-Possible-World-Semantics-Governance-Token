@@ -183,6 +183,10 @@ with tab_run:
     if "sim_log" not in st.session_state:
         st.session_state.sim_log = []
     
+    # Track log updates for refresh
+    if "log_update_counter" not in st.session_state:
+        st.session_state.log_update_counter = 0
+    
     # Display log area
     st.subheader("Simulation Log")
     
@@ -191,10 +195,12 @@ with tab_run:
         timestamp = time.strftime("%H:%M:%S")
         log_entry = f"[{timestamp}] [{level}] {message}"
         st.session_state.sim_log.append(log_entry)
+        st.session_state.log_update_counter += 1  # Increment to force refresh
     
     if submitted:
         # Clear log at start of simulation
         st.session_state.sim_log = []
+        st.session_state.log_update_counter = st.session_state.get("log_update_counter", 0) + 1  # Force refresh
         add_log("=" * 60)
         add_log("Starting new simulation run")
         add_log("=" * 60)
@@ -363,10 +369,11 @@ with tab_run:
         st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
         st.rerun()
     
-    # Display current log if it exists
-    if st.session_state.sim_log:
-        log_text = "\n".join(st.session_state.sim_log)
-        st.text_area("", value=log_text, height=300, disabled=True, key="log_display_final", label_visibility="collapsed")
+    # Display current log - always show, even if empty (to show it was cleared)
+    log_text = "\n".join(st.session_state.sim_log) if st.session_state.sim_log else "(Log cleared - ready for new simulation)"
+    # Use dynamic key based on update counter to force refresh
+    log_key = f"log_display_{st.session_state.get('log_update_counter', 0)}_{len(st.session_state.sim_log)}"
+    st.text_area("", value=log_text, height=300, disabled=True, key=log_key, label_visibility="collapsed")
 
     st.divider()
     st.subheader("Run Custom Proposal")
