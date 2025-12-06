@@ -268,8 +268,8 @@ with tab_overview:
         """)
     
     with col2:
-    active = read_active()
-    history = read_history()
+        active = read_active()
+        history = read_history()
         # Load worlds to get names for display
         try:
             _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
