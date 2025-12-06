@@ -139,54 +139,42 @@ with tab_about:
     # High-Level Overview
     st.markdown(
         """
-        **CPWS combines modal logic with governance to create a resilient, non-linear DAO roadmap.**
+        CPWS combines modal logic with governance to create a resilient, non-linear DAO roadmap. It defines possible future states and the rules for moving between them.
         """
     )
     
     st.divider()
     
-    # Concept Cards
-    st.subheader("Core Concepts")
-    
-    # Concept Card 1: World (Governance State)
-    with st.container():
-        st.markdown("### 🌍 World (Governance State)")
-        st.markdown("A defined state or snapshot of the protocol's current parameters.")
-        with st.expander("Detailed Explanation"):
-            st.markdown(
-                """
-                Each world (W1, W2, etc.) holds a set of propositions (p1, p2, etc.) that are either true or false. 
-                In governance, this means a feature is ON or OFF.
-                """
-            )
+    # Concept 1: World (The Governance Snapshot)
+    st.markdown("### 🌍 World (The Governance Snapshot)")
+    st.markdown("A defined state or snapshot of the protocol's current parameters.")
+    st.markdown(
+        """
+        Each world (e.g., W1, W2) holds a set of propositions (p₁, p₂, etc.) that are either true or false. In governance, this means specific features are ON or OFF, or certain parameters are set to specific values.
+        """
+    )
     
     st.divider()
     
-    # Concept Card 2: Accessibility Relation (The Roadmap)
-    with st.container():
-        st.markdown("### 🗺️ Accessibility Relation (The Roadmap)")
-        st.markdown("The \"Rulebook\" that defines which state can legally follow another.")
-        with st.expander("Detailed Explanation"):
-            st.markdown(
-                """
-                Represented by the graph's edges (W1 → W2). A transition is only possible if an edge exists. 
-                If no edge exists, the governance can never move between those two states.
-                """
-            )
+    # Concept 2: Accessibility Relation (The Roadmap)
+    st.markdown("### 🗺️ Accessibility Relation (The Roadmap)")
+    st.markdown("The \"Rulebook\" that defines which state can legally follow another.")
+    st.markdown(
+        """
+        This is represented by the graph's edges (e.g., W1 → W2). A transition is only possible if an edge exists, meaning the governance has a predefined path to move between those two states. If no edge exists, that move is logically blocked.
+        """
+    )
     
     st.divider()
     
-    # Concept Card 3: Cyclic Nature (The Continuous Loop)
-    with st.container():
-        st.markdown("### 🔄 Cyclic Nature (The Continuous Loop)")
-        st.markdown("The system can revisit or correct past states, preventing permanent \"dead ends.\"")
-        with st.expander("Detailed Explanation"):
-            st.markdown(
-                """
-                The graph includes a cycle (W4 → W1) and reverse transitions (W2 → W1). This is crucial for governance, 
-                as it means the community can vote to revert an unsuccessful change.
-                """
-            )
+    # Concept 3: Cyclic Nature (The Continuous Loop)
+    st.markdown("### 🔄 Cyclic Nature (The Continuous Loop)")
+    st.markdown("The system can revisit or correct past states, preventing permanent \"dead ends.\"")
+    st.markdown(
+        """
+        The graph includes a full cycle (like W4 → W1) and reverse transitions (like W2 → W1). This is crucial for governance, as it means the community can always vote to revert an unsuccessful change, ensuring resilience and adaptability.
+        """
+    )
 
 
 with tab_overview:
