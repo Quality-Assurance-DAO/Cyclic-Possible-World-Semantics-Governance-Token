@@ -179,13 +179,16 @@ with tab_run:
         proposal_sequence = st.radio(
             "Proposal sequence",
             ["Default (forward cycle + reverse)", "All 6 proposals (interleaved)"],
-            help="Default: 4 forward proposals (w1→w2→w3→w4→w1) complete the cycle, then 2 reverse proposals (only 4 can run). All 6: interleaved sequence demonstrating both forward and reverse transitions in the cyclic model."
+            help="Default: 4 forward proposals (w1→w2→w3→w4→w1) complete the cycle, then 2 reverse proposals (only 4 can run). All 6: interleaved sequence demonstrating both forward and reverse transitions in the cyclic model (requires 8 proposals to reach all worlds including w4)."
         )
         # Get the actual number of available proposals based on selected sequence
         if proposal_sequence == "All 6 proposals (interleaved)":
             all_proposals_list = all_six_proposals_sequence()
+            default_steps = 8  # Need all 8 to reach w4
+            st.info("ℹ️ **Interleaved sequence note**: This sequence has 8 proposals total. You need to run all 8 proposals to reach w4. The default is set to 8.")
         else:
             all_proposals_list = default_proposals()
+            default_steps = 6
         available_proposals = len(all_proposals_list)
         filter_matching_only = st.checkbox("Show only matching proposals", value=False,
                                           help="If enabled, only proposals that match the current active world will be included in the run list. This filters out proposals that would be skipped.")
@@ -200,8 +203,8 @@ with tab_run:
             else:
                 st.warning(f"⚠️ No proposals match current active world ({current_active_preview}). Filter will be ignored.")
         
-        n_steps = st.number_input("Run N predefined proposals", value=6, step=1, min_value=1, max_value=available_proposals, 
-                                 help=f"Maximum {available_proposals} proposals are available in selected sequence" + (" (filtered to matching only)" if filter_matching_only else ""))
+        n_steps = st.number_input("Run N predefined proposals", value=default_steps, step=1, min_value=1, max_value=available_proposals, 
+                                 help=f"Maximum {available_proposals} proposals are available in selected sequence" + (" (filtered to matching only)" if filter_matching_only else "") + (". Note: Interleaved sequence needs all 8 proposals to reach w4." if proposal_sequence == "All 6 proposals (interleaved)" else ""))
         clear_history = st.checkbox("Clear history before running", value=True, 
                                    help="If checked, resets history and active world to initial state before running the simulation")
         submitted = st.form_submit_button("Run Simulation")
@@ -393,9 +396,20 @@ with tab_run:
         if skipped_count > 0:
             summary_parts.append(f"{skipped_count} skipped (wrong active world)")
         summary = ", ".join(summary_parts)
+        
+        # Determine which worlds were visited
+        visited_worlds = set()
+        for h in final_history:
+            visited_worlds.add(h.get("from_world"))
+            visited_worlds.add(h.get("to_world"))
+        visited_worlds_list = sorted(list(visited_worlds))
+        
         add_log("=" * 60)
         add_log(f"Simulation complete: {summary} out of {len(proposals)} proposals.")
         add_log(f"History contains {len(final_history)} transitions. Active world: {final_active}")
+        add_log(f"Visited worlds: {', '.join(visited_worlds_list) if visited_worlds_list else 'None'}")
+        if proposal_sequence == "All 6 proposals (interleaved)" and "w4" not in visited_worlds:
+            add_log("⚠️ WARNING: w4 was not visited. The interleaved sequence requires all 8 proposals to reach w4. Did you run all 8 proposals?", "WARNING")
         add_log("=" * 60)
         
         st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
