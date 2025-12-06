@@ -1295,7 +1295,13 @@ with tab_graph:
     
     # Add edge legend if there's a highlighted edge (only in Interactive mode)
     if "selected_transition" in st.session_state and st.session_state.selected_transition:
-        if graph_view == "Interactive (with hover tooltips)" and PLOTLY_AVAILABLE:
+        # Check if graph_view is defined and if we're in interactive mode
+        try:
+            is_interactive = graph_view == "Interactive (with hover tooltips)" and PLOTLY_AVAILABLE
+        except (NameError, AttributeError):
+            is_interactive = False
+        
+        if is_interactive:
             st.markdown("**Edge Highlighting:**")
             st.markdown("🔴 **Red thick edge**: Selected transition from Governance History tab (shows the direct impact of a successful vote). **Only visible in Interactive mode.**")
         else:
