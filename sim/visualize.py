@@ -11,7 +11,9 @@ import networkx as nx
 
 def draw_graph_png(G: nx.DiGraph, active_world: str, labels: Dict[str, str], outfile: str, history_path: str = None) -> None:
     pos = nx.spring_layout(G, seed=7)
-    plt.figure(figsize=(8, 6))
+    # Increase figure size and use wider aspect ratio to accommodate legend
+    plt.figure(figsize=(10, 7))
+    ax = plt.gca()
     
     # Determine which worlds have been visited (from history)
     visited_worlds = set()
@@ -36,9 +38,9 @@ def draw_graph_png(G: nx.DiGraph, active_world: str, labels: Dict[str, str], out
         else:
             node_colors.append("#87ceeb")  # Light blue - unvisited
     
-    nx.draw(G, pos, with_labels=False, node_color=node_colors, arrows=True, arrowstyle='-|>',
+    nx.draw(G, pos, ax=ax, with_labels=False, node_color=node_colors, arrows=True, arrowstyle='-|>',
             node_size=1500, edgecolors='black', linewidths=2)
-    nx.draw_networkx_labels(G, pos, labels={n: labels.get(n, n) for n in G.nodes()}, font_size=8)
+    nx.draw_networkx_labels(G, pos, ax=ax, labels={n: labels.get(n, n) for n in G.nodes()}, font_size=8)
     
     # Add legend outside the plot area to avoid obscuring graph
     from matplotlib.patches import Patch
@@ -50,9 +52,26 @@ def draw_graph_png(G: nx.DiGraph, active_world: str, labels: Dict[str, str], out
     # Position legend outside plot area (bbox_to_anchor places it outside)
     plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.02, 1), fontsize=8, framealpha=0.9)
     
-    plt.tight_layout()
+    # Set axis limits with padding to prevent clipping
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    x_padding = (xlim[1] - xlim[0]) * 0.15  # 15% padding
+    y_padding = (ylim[1] - ylim[0]) * 0.15  # 15% padding
+    ax.set_xlim(xlim[0] - x_padding, xlim[1] + x_padding)
+    ax.set_ylim(ylim[0] - y_padding, ylim[1] + y_padding)
+    
+    # Turn off axis for cleaner look
+    ax.axis('off')
+    
+    # Adjust layout with padding to ensure nothing is clipped
+    try:
+        plt.tight_layout(pad=2.0)
+    except Exception:
+        # If tight_layout fails, use subplots_adjust as fallback with margins for legend and padding
+        plt.subplots_adjust(left=0.05, right=0.85, top=0.95, bottom=0.05)
+    
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
-    plt.savefig(outfile)
+    plt.savefig(outfile, bbox_inches='tight', pad_inches=0.2)
     plt.close()
 
 
@@ -126,7 +145,9 @@ def draw_timeline(history_path: str, outfile: str) -> None:
 
 def graph_png_bytes(G: nx.DiGraph, active_world: str, labels: Dict[str, str], history_path: str = None) -> bytes:
     pos = nx.spring_layout(G, seed=7)
-    plt.figure(figsize=(8, 6))
+    # Increase figure size and use wider aspect ratio to accommodate legend
+    plt.figure(figsize=(10, 7))
+    ax = plt.gca()
     
     # Determine which worlds have been visited (from history)
     visited_worlds = set()
@@ -151,9 +172,9 @@ def graph_png_bytes(G: nx.DiGraph, active_world: str, labels: Dict[str, str], hi
         else:
             node_colors.append("#87ceeb")  # Light blue - unvisited
     
-    nx.draw(G, pos, with_labels=False, node_color=node_colors, arrows=True, arrowstyle='-|>', 
+    nx.draw(G, pos, ax=ax, with_labels=False, node_color=node_colors, arrows=True, arrowstyle='-|>', 
             node_size=1500, edgecolors='black', linewidths=2)
-    nx.draw_networkx_labels(G, pos, labels={n: labels.get(n, n) for n in G.nodes()}, font_size=8)
+    nx.draw_networkx_labels(G, pos, ax=ax, labels={n: labels.get(n, n) for n in G.nodes()}, font_size=8)
     
     # Add legend outside the plot area to avoid obscuring graph
     from matplotlib.patches import Patch
@@ -165,13 +186,26 @@ def graph_png_bytes(G: nx.DiGraph, active_world: str, labels: Dict[str, str], hi
     # Position legend outside plot area (bbox_to_anchor places it outside)
     plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.02, 1), fontsize=8, framealpha=0.9)
     
+    # Set axis limits with padding to prevent clipping
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    x_padding = (xlim[1] - xlim[0]) * 0.15  # 15% padding
+    y_padding = (ylim[1] - ylim[0]) * 0.15  # 15% padding
+    ax.set_xlim(xlim[0] - x_padding, xlim[1] + x_padding)
+    ax.set_ylim(ylim[0] - y_padding, ylim[1] + y_padding)
+    
+    # Turn off axis for cleaner look
+    ax.axis('off')
+    
+    # Adjust layout with padding to ensure nothing is clipped
     try:
-        plt.tight_layout()
+        plt.tight_layout(pad=2.0)
     except Exception:
-        # If tight_layout fails, use subplots_adjust as fallback with extra right margin for legend
-        plt.subplots_adjust(left=0.1, right=0.75, top=0.9, bottom=0.1)
+        # If tight_layout fails, use subplots_adjust as fallback with margins for legend and padding
+        plt.subplots_adjust(left=0.05, right=0.85, top=0.95, bottom=0.05)
+    
     buf = BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.2)
     plt.close()
     return buf.getvalue()
 

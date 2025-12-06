@@ -1,15 +1,32 @@
 [
   {
-    "tx_id": "1894d5a8-4706-4e6f-a11f-a52e4aa44857",
-    "proposal_id": "prop-custom",
-    "from_world": "w4",
-    "to_world": "w1",
-    "arweave_from": "ar://placeholder-6dea29048d1406b8",
-    "arweave_to": "ar://placeholder-6190fe2d1ad58e90",
+    "tx_id": "e0854102-3b44-4a28-b3cf-a156bcb7a33c",
+    "proposal_id": "prop-001-forward",
+    "from_world": "w1",
+    "to_world": "w2",
+    "arweave_from": "ar://placeholder-6190fe2d1ad58e90",
+    "arweave_to": "ar://placeholder-518c2391a70e7932",
     "votes_for": 52,
     "votes_against": 3,
     "quorum": 0.5,
-    "timestamp": "2025-12-06T03:15:42Z",
+    "timestamp": "2025-12-06T03:21:10Z",
+    "signers": [
+      "gov_key1",
+      "gov_key2"
+    ],
+    "notes": "simulation run"
+  },
+  {
+    "tx_id": "ea3c94f3-3039-48f7-9047-da4f70648463",
+    "proposal_id": "prop-005-reverse",
+    "from_world": "w2",
+    "to_world": "w1",
+    "arweave_from": "ar://placeholder-518c2391a70e7932",
+    "arweave_to": "ar://placeholder-6190fe2d1ad58e90",
+    "votes_for": 28,
+    "votes_against": 27,
+    "quorum": 0.5,
+    "timestamp": "2025-12-06T03:21:10Z",
     "signers": [
       "gov_key1",
       "gov_key2"
