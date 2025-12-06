@@ -131,6 +131,84 @@ Notes:
 - Secrets management: https://docs.streamlit.io/streamlit-community-cloud/get-started/deploy-an-app/connect-to-data-sources/secrets-management
 - App sharing and updates: https://docs.streamlit.io/streamlit-community-cloud/manage-your-app#share-your-app
 
+## Interactive Controls: Understanding Quorum and Approval Thresholds
+
+The dashboard's **Configure & Run** tab provides interactive controls that directly affect the probability of successful governance transitions. Understanding these parameters is crucial for predicting and controlling proposal outcomes.
+
+### How Proposals Succeed or Fail
+
+A proposal must pass **two independent checks** to succeed:
+
+1. **Quorum Check**: Enough total voting weight must participate
+2. **Approval Threshold Check**: Enough participating votes must be "for" the proposal
+
+If either check fails, the proposal fails and the active world remains unchanged.
+
+### Quorum: The Participation Requirement
+
+**What it is**: The minimum fraction of total voting weight that must participate in the vote.
+
+**How it works**:
+- **Quorum = 0.5 (50%)**: At least 50% of all possible voting weight must participate
+- **Quorum = 0.3 (30%)**: At least 30% of all possible voting weight must participate
+- **Quorum = 0.8 (80%)**: At least 80% of all possible voting weight must participate
+
+**Impact on success probability**:
+- **Lower quorum** (e.g., 0.3) = **Higher success rate**: Easier to meet participation requirement
+- **Higher quorum** (e.g., 0.8) = **Lower success rate**: Harder to get enough voters to participate
+
+**Example**: With 10 voters (weights 1-10, total weight = 55):
+- Quorum 0.5: Need at least 27.5 weight participating (e.g., voters 6-10 = 6+7+8+9+10 = 40 ✓)
+- Quorum 0.8: Need at least 44 weight participating (e.g., voters 7-10 = 7+8+9+10 = 34 ✗, need more)
+
+**Real-world analogy**: Quorum is like requiring a minimum number of board members to be present before a vote can be valid. Lower quorum = easier to hold a valid vote.
+
+### Approval Threshold: The Support Requirement
+
+**What it is**: The minimum fraction of **participating** voting weight that must vote "for" the proposal.
+
+**How it works**:
+- **Threshold = 0.5 (50%)**: More than 50% of participating weight must vote "for" (strict majority)
+- **Threshold = 0.3 (30%)**: More than 30% of participating weight must vote "for" (super-majority)
+- **Threshold = 0.7 (70%)**: More than 70% of participating weight must vote "for" (consensus)
+
+**Important**: The threshold requires a **strict majority** (support > threshold), not equal to. A 50/50 tie fails when threshold = 0.5.
+
+**Impact on success probability**:
+- **Lower threshold** (e.g., 0.3) = **Higher success rate**: Easier to get enough "for" votes
+- **Higher threshold** (e.g., 0.7) = **Lower success rate**: Harder to get enough "for" votes
+
+**Example**: With 40 weight participating:
+- Threshold 0.5: Need more than 20 weight voting "for" (e.g., 22 for, 18 against = 55% support ✓)
+- Threshold 0.5: 20 for, 20 against = 50% support ✗ (tie fails, needs >50%)
+- Threshold 0.7: Need more than 28 weight voting "for" (e.g., 25 for, 15 against = 62.5% support ✗, needs >70%)
+
+**Real-world analogy**: Approval threshold is like requiring a supermajority vote. Lower threshold = easier to pass, higher threshold = requires more consensus.
+
+### Interactive Control Strategy
+
+**To increase proposal success rate**:
+1. **Lower Quorum** (e.g., 0.3 instead of 0.5): Makes it easier to meet participation requirement
+2. **Lower Approval Threshold** (e.g., 0.4 instead of 0.5): Makes it easier to get enough "for" votes
+3. **Increase Approval Probability** (e.g., 0.8 instead of 0.6): Each voter is more likely to vote "for"
+4. **Increase Participation Probability** (e.g., 0.98 instead of 0.95): More voters participate, making quorum easier
+
+**To decrease proposal success rate** (require more consensus):
+1. **Raise Quorum** (e.g., 0.7): Requires more participation
+2. **Raise Approval Threshold** (e.g., 0.7): Requires stronger consensus among participants
+3. **Lower Approval Probability** (e.g., 0.4): Each voter is less likely to vote "for"
+
+### Visual Feedback in the Dashboard
+
+The **Simulation Log** in the Configure & Run tab shows exactly why each proposal succeeded or failed:
+
+- **Success**: Shows vote counts and confirms both quorum and threshold were met
+- **Failure**: Shows which requirement failed:
+  - `Quorum not met (X% < Y%)`: Not enough participation
+  - `Threshold not met (X% ≤ Y%)`: Not enough "for" votes (or tie)
+
+**Experiment tip**: Try running the same simulation with different quorum/threshold values and compare the results in the Simulation Log to see how these parameters directly affect outcomes.
+
 ## Repository Layout
 
 - `sim/` – core simulation modules
