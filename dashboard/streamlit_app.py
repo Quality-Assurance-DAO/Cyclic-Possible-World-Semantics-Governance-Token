@@ -114,16 +114,29 @@ with tab_overview:
     with st.expander("Key terms (what things mean)"):
         st.markdown(
             """
-            - **World**: An immutable governance configuration (node) identified by a `world_id` (e.g., `w1`).
-            - **Transition**: A directed change from one world to another (edge), optionally cyclic.
-            - **Active world**: The current world in effect; updated after a passed proposal (in simulation, stored in `examples/active_world.json`).
-            - **Kripke model**: A graph (worlds + edges) with a valuation of propositions that can be checked with modal operators.
-            - **□p (Necessary)**: True at world `w` if proposition `p` is true in all successors of `w`.
-            - **◇p (Possible)**: True at world `w` if proposition `p` is true in at least one successor of `w`.
-            - **Quorum**: Minimum fraction of total voting weight that must participate for a proposal to be valid.
-            - **Approval threshold**: Fraction of participating weight that must vote "for" to pass (e.g., 0.5 = simple majority).
-            - **Voter weight**: The voting power assigned to a voter (here, integers 1..N by default).
-            - **History**: The sequence of simulated transition transactions written to `examples/history.json`.
+            - **World**: An immutable governance configuration (node) identified by a `world_id` (e.g., `w1`). Each world represents a specific state of the DAO/protocol with defined rules, features, and parameters. Think of it as a snapshot of how the DAO is configured at a particular point in time.
+            
+            - **Transition**: A directed change from one world to another (edge), optionally cyclic. A transition represents a governance proposal that moves the system from one state to another.
+            
+            - **Active world**: The current world in effect; updated after a passed proposal (in simulation, stored in `examples/active_world.json`). This is the governance state currently in use.
+            
+            - **Kripke model**: A graph (worlds + edges) with a valuation of propositions that can be checked with modal operators. The model defines all possible states (worlds) and which transitions between them are allowed (accessibility relation). It provides a formal way to reason about what governance states are possible and which transitions are valid.
+            
+            - **Accessibility Relation**: The "rulebook" or "roadmap" that defines which state (World) can legally follow another. An edge from W1 to W2 means W2 is a possible transition from W1. This creates the graph structure showing all valid governance paths. Just like a roadmap shows which cities you can travel to from your current location, the accessibility relation shows which governance states you can transition to from your current state.
+            
+            - **Cyclic**: The system can revisit or correct past states. Governance is not a linear path; a DAO can always loop back to a previous configuration if needed, reflecting the philosophy of governance as a continuous loop. This means if a new governance change doesn't work out, the community can vote to revert to a previous, proven configuration.
+            
+            - **Quorum**: The minimum percentage of total voting weight that must participate for a vote to be considered valid. Example: 0.5 = 50% of all voters must participate. If quorum isn't met, the proposal fails regardless of how the votes are distributed. Lower values make it easier to meet the participation requirement.
+            
+            - **Approval threshold**: The minimum percentage of participating voting weight that must vote "for" to pass (e.g., 0.5 = simple majority). Requires strict majority (support > threshold), so a 50/50 tie fails when threshold is 0.5. Lower values make proposals easier to pass.
+            
+            - **□p (Necessary)**: True at world `w` if proposition `p` is true in all successors of `w`. Represents a requirement that must hold in all possible next states.
+            
+            - **◇p (Possible)**: True at world `w` if proposition `p` is true in at least one successor of `w`. Represents a possibility that can be achieved in some future state.
+            
+            - **Voter weight**: The voting power assigned to a voter (here, integers 1..N by default). Higher weight voters have more influence in the voting process.
+            
+            - **History**: The sequence of simulated transition transactions written to `examples/history.json`. This records all successful governance transitions with their vote counts, timestamps, and metadata.
             """
         )
     col1, col2, col3 = st.columns(3)
@@ -172,14 +185,21 @@ with tab_run:
     with st.expander("Parameters explained"):
         st.markdown(
             """
-            - **Seed**: Random number generator seed for reproducible simulations. Different seeds produce different voting patterns.
-            - **Quorum**: Minimum fraction of total voting weight that must participate (e.g., 0.5 = 50%). If quorum isn't met, the proposal fails.
-            - **Approval threshold**: Fraction of participating weight that must vote "for" to pass (e.g., 0.5 = simple majority). **Requires strict majority** (support > threshold), so a 50/50 tie fails. Even with quorum, if support is at or below this threshold, the proposal fails.
-            - **Approval probability**: Chance each participating voter votes "for" (0.6 = 60%). Higher values increase the likelihood of proposals passing.
-            - **Participation probability**: Chance each voter participates at all (0.95 = 95%). Lower values reduce total participation, making quorum harder to meet.
-            - **Voters**: Number of simulated voters with weights 1, 2, 3, ..., N.
-            - **Run N predefined proposals**: Execute the first N proposals from the selected sequence.
-            - **Proposal sequence**: Choose between default sequence (4 forward proposals that complete the cycle) or interleaved sequence (all 6 proposals including reverse transitions).
+            - **Seed**: Random number generator seed for reproducible simulations. Different seeds produce different voting patterns. Same seed = same results.
+            
+            - **Quorum**: The minimum percentage of total voting weight that must participate for a vote to be considered valid (e.g., 0.5 = 50%). If quorum isn't met, the proposal fails regardless of how the votes are distributed. Lower quorum = easier to meet participation requirement.
+            
+            - **Approval threshold**: The minimum percentage of participating voting weight that must vote "for" to pass (e.g., 0.5 = simple majority). **Requires strict majority** (support > threshold), so a 50/50 tie fails. Even with quorum, if support is at or below this threshold, the proposal fails. Lower threshold = easier to pass.
+            
+            - **Approval probability**: The chance each participating voter votes "for" (0.6 = 60%). Higher values increase the likelihood of proposals passing. This simulates voter sentiment toward the proposal.
+            
+            - **Participation probability**: The chance each voter participates at all (0.95 = 95%). Lower values reduce total participation, making quorum harder to meet. This simulates voter engagement.
+            
+            - **Voters**: Number of simulated voters with weights 1, 2, 3, ..., N. Total voting weight = sum of all weights. Higher weight voters have more influence.
+            
+            - **Run N predefined proposals**: Execute the first N proposals from the selected sequence. Proposals run sequentially and may be skipped if the active world doesn't match.
+            
+            - **Proposal sequence**: Choose between default sequence (4 forward proposals that complete the cycle) or interleaved sequence (all 6 proposals including reverse transitions, requires 8 proposals total to reach w4).
             
             **Proposal Types:**
             - **Forward proposals** (prop-001 through prop-004): Advance through the cycle w1→w2→w3→w4→w1, demonstrating forward progression in the cyclic possible world model.
@@ -199,12 +219,17 @@ with tab_run:
     guaranteed_approval = st.checkbox("Guaranteed approval mode", value=False,
                                      help="If enabled, all proposals that match the active world will automatically pass (bypasses voting). Useful for testing state transitions.")
     with st.form("run_form"):
-        seed = st.number_input("Seed", value=42, step=1)
-        quorum = st.slider("Quorum", 0.0, 1.0, 0.5, 0.05)
-        threshold = st.slider("Approval threshold", 0.0, 1.0, 0.5, 0.05)
-        approval_prob = st.slider("Approval probability", 0.0, 1.0, 0.6, 0.05)
-        participation_prob = st.slider("Participation probability", 0.0, 1.0, 0.95, 0.05)
-        voter_count = st.number_input("Voters", value=10, step=1, min_value=1, max_value=100)
+        seed = st.number_input("Seed", value=42, step=1, help="Random number generator seed for reproducible simulations. Different seeds produce different voting patterns.")
+        quorum = st.slider("Quorum", 0.0, 1.0, 0.5, 0.05, 
+                          help="The minimum percentage of total voting weight that must participate for a vote to be considered valid. Example: 0.5 = 50% of all voters must participate. Lower values make it easier to meet the participation requirement.")
+        threshold = st.slider("Approval threshold", 0.0, 1.0, 0.5, 0.05,
+                             help="The minimum percentage of participating voting weight that must vote 'for' to pass. Requires strict majority (support > threshold), so a 50/50 tie fails when threshold is 0.5. Lower values make proposals easier to pass.")
+        approval_prob = st.slider("Approval probability", 0.0, 1.0, 0.6, 0.05,
+                                 help="The probability that each participating voter will vote 'for' the proposal. Higher values increase the likelihood of proposals passing. Example: 0.6 = 60% chance each voter approves.")
+        participation_prob = st.slider("Participation probability", 0.0, 1.0, 0.95, 0.05,
+                                      help="The probability that each voter will participate in the vote at all. Lower values reduce total participation, making quorum harder to meet. Example: 0.95 = 95% chance each voter participates.")
+        voter_count = st.number_input("Voters", value=10, step=1, min_value=1, max_value=100,
+                                     help="Number of simulated voters. Each voter has a weight (1, 2, 3, ..., N). Total voting weight = sum of all voter weights.")
         # Proposal sequence selection
         proposal_sequence = st.radio(
             "Proposal sequence",
@@ -609,6 +634,18 @@ with tab_graph:
         View the Kripke model as a directed graph. The active world is highlighted in yellow.
         """
     )
+    with st.expander("ℹ️ What is a Kripke Model?"):
+        st.markdown(
+            """
+            **Kripke Model**: A mathematical structure used to represent possible worlds and their relationships.
+            
+            - **Worlds (nodes)**: Each circle represents a possible governance state (e.g., w1 = Base Governance, w2 = Quorum Enabled)
+            - **Edges (arrows)**: Show which transitions are allowed (the **Accessibility Relation**). An arrow from w1 to w2 means you can transition from w1 to w2, but not necessarily the reverse.
+            - **Valuation**: Each world has a truth assignment showing which propositions (p1, p2, p3, p4) are true in that world, displayed as {p1, p2, ...}
+            
+            The model provides a formal way to reason about what governance states are possible, which transitions are valid, and what properties hold in different configurations.
+            """
+        )
     with st.expander("Graph elements"):
         st.markdown(
             """
