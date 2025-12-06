@@ -76,6 +76,29 @@ def reset_history():
         os.fsync(f.fileno())
 
 
+def format_world_label(world_id: str, worlds: Dict = None) -> str:
+    """Format world ID with its name for display.
+    
+    Args:
+        world_id: The world ID (e.g., "w1")
+        worlds: Optional dict of World objects keyed by world_id. If None, will load from examples_dir.
+    
+    Returns:
+        Formatted string like "w1 (Base Governance)" or just "w1" if world not found.
+    """
+    if worlds is None:
+        try:
+            _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
+            worlds = worlds_dict
+        except Exception:
+            return world_id
+    
+    if world_id in worlds:
+        world = worlds[world_id]
+        return f"{world_id} ({world.name})"
+    return world_id
+
+
 tab_overview, tab_run, tab_graph, tab_timeline, tab_data = st.tabs([
     "Overview", "Configure & Run", "Graph", "Timeline", "Data",
 ])
@@ -106,7 +129,14 @@ with tab_overview:
     col1, col2, col3 = st.columns(3)
     active = read_active()
     history = read_history()
-    col1.metric("Active World", active.get("active_world"))
+    # Load worlds to get names for display
+    try:
+        _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
+        active_world_id = active.get("active_world", "w1")
+        active_world_label = format_world_label(active_world_id, worlds_dict)
+    except Exception:
+        active_world_label = active.get("active_world", "w1")
+    col1.metric("Active World", active_world_label)
     col2.metric("Transitions", len(history))
     col3.metric("Last TX", active.get("last_tx") or "—")
 
@@ -195,13 +225,18 @@ with tab_run:
         
         # Show preview of matching proposals if filter is enabled
         if filter_matching_only:
+            try:
+                _, worlds_preview, _ = load_worlds_and_valuation(examples_dir)
+            except Exception:
+                worlds_preview = {}
             current_active_preview = read_active().get("active_world", "w1")
+            current_active_preview_label = format_world_label(current_active_preview, worlds_preview)
             matching_preview = [(pid, src, dst) for pid, src, dst in all_proposals_list if src == current_active_preview]
             if matching_preview:
                 matching_ids = [p[0] for p in matching_preview]
-                st.info(f"📋 Filter active: {len(matching_preview)} proposal(s) match current active world ({current_active_preview}): {matching_ids}")
+                st.info(f"📋 Filter active: {len(matching_preview)} proposal(s) match current active world ({current_active_preview_label}): {matching_ids}")
             else:
-                st.warning(f"⚠️ No proposals match current active world ({current_active_preview}). Filter will be ignored.")
+                st.warning(f"⚠️ No proposals match current active world ({current_active_preview_label}). Filter will be ignored.")
         
         n_steps = st.number_input("Run N predefined proposals", value=default_steps, step=1, min_value=1, max_value=available_proposals, 
                                  help=f"Maximum {available_proposals} proposals are available in selected sequence" + (" (filtered to matching only)" if filter_matching_only else "") + (". Note: Interleaved sequence needs all 8 proposals to reach w4." if proposal_sequence == "All 6 proposals (interleaved)" else ""))
@@ -228,6 +263,9 @@ with tab_run:
         st.session_state.log_update_counter += 1  # Increment to force refresh
     
     if submitted:
+        # Load worlds for name formatting
+        _, worlds_dict, _ = load_worlds_and_valuation(examples_dir)
+        
         # Clear log at start of simulation
         st.session_state.sim_log = []
         st.session_state.log_update_counter = st.session_state.get("log_update_counter", 0) + 1  # Force refresh
@@ -247,9 +285,10 @@ with tab_run:
             # Verify active world was reset to w1
             verify_active = read_active().get("active_world", "w1")
             if verify_active != "w1":
-                add_log(f"ERROR: Active world was not reset to w1. Current value: {verify_active}", "ERROR")
+                verify_active_label = format_world_label(verify_active, worlds_dict)
+                add_log(f"ERROR: Active world was not reset to w1. Current value: {verify_active_label}", "ERROR")
             else:
-                add_log(f"Active world reset to w1 (default initial state).", "SUCCESS")
+                add_log(f"Active world reset to {format_world_label('w1', worlds_dict)} (default initial state).", "SUCCESS")
         
         rng = random.Random(int(seed))
         voters = build_voters(int(voter_count))
@@ -262,12 +301,13 @@ with tab_run:
         # Filter to only matching proposals if requested
         if filter_matching_only:
             current_active = read_active().get("active_world", "w1")
+            current_active_label = format_world_label(current_active, worlds_dict)
             matching_proposals = [(pid, src, dst) for pid, src, dst in all_proposals if src == current_active]
             if matching_proposals:
                 all_proposals = matching_proposals
-                add_log(f"Filtered to {len(matching_proposals)} matching proposal(s) (active world: {current_active})")
+                add_log(f"Filtered to {len(matching_proposals)} matching proposal(s) (active world: {current_active_label})")
             else:
-                add_log(f"WARNING: No proposals match current active world ({current_active}). Running all proposals instead.", "WARNING")
+                add_log(f"WARNING: No proposals match current active world ({current_active_label}). Running all proposals instead.", "WARNING")
         
         max_available = len(all_proposals)
         requested_steps = int(n_steps)
@@ -313,19 +353,24 @@ with tab_run:
             elif is_forward:
                 direction_label = " [FORWARD - cycle-advancing]"
             
+            # Format world labels for display
+            src_label = format_world_label(src, worlds_dict)
+            dst_label = format_world_label(dst, worlds_dict)
+            current_active_label = format_world_label(current_active, worlds_dict)
+            
             # Validate that the proposal's from_world matches the current active world FIRST
             if src != current_active:
-                add_log(f"SKIPPING {prop_id} ({src}→{dst}): Current active world is {current_active}, but proposal requires {src}{direction_label}", "WARNING")
+                add_log(f"SKIPPING {prop_id} ({src_label}→{dst_label}): Current active world is {current_active_label}, but proposal requires {src_label}{direction_label}", "WARNING")
                 skipped_count += 1
                 continue
             
             # Only log "Processing" for proposals that match and will actually run
-            add_log(f"Processing {prop_id}: Current active world = {current_active}, Proposal requires = {src}{direction_label} ✓ MATCH")
+            add_log(f"Processing {prop_id}: Current active world = {current_active_label}, Proposal requires = {src_label}{direction_label} ✓ MATCH")
             
             if guaranteed_approval:
-                add_log(f"Running {prop_id}: {src} → {dst}{direction_label} (GUARANTEED APPROVAL MODE - bypassing voting)")
+                add_log(f"Running {prop_id}: {src_label} → {dst_label}{direction_label} (GUARANTEED APPROVAL MODE - bypassing voting)")
             else:
-                add_log(f"Running {prop_id}: {src} → {dst}{direction_label}")
+                add_log(f"Running {prop_id}: {src_label} → {dst_label}{direction_label}")
             tx, result = run_single_proposal(
                 examples_dir=examples_dir,
                 proposal_id=prop_id,
@@ -346,10 +391,11 @@ with tab_run:
                 time.sleep(0.01)
                 # Verify active world was updated (read fresh after transition)
                 new_active = read_active().get("active_world", "w1")
+                new_active_label = format_world_label(new_active, worlds_dict)
                 if new_active != dst:
-                    add_log(f"ERROR: After {prop_id}, active world is {new_active} but should be {dst}", "ERROR")
+                    add_log(f"ERROR: After {prop_id}, active world is {new_active_label} but should be {dst_label}", "ERROR")
                 else:
-                    add_log(f"✓ {prop_id} SUCCEEDED: {src} → {dst}{direction_label} (active world now: {new_active})", "SUCCESS")
+                    add_log(f"✓ {prop_id} SUCCEEDED: {src_label} → {dst_label}{direction_label} (active world now: {new_active_label})", "SUCCESS")
             else:
                 failed_count += 1
                 # Provide detailed failure information
@@ -372,11 +418,11 @@ with tab_run:
                             failure_reasons.append(f"Threshold not met ({support_pct:.1f}% < {threshold_pct:.1f}%)")
                     
                     reason = " | ".join(failure_reasons) if failure_reasons else "Unknown reason"
-                    add_log(f"FAILED {prop_id} ({src}→{dst}): {reason}", "ERROR")
+                    add_log(f"FAILED {prop_id} ({src_label}→{dst_label}): {reason}", "ERROR")
                     add_log(f"  Votes: FOR={result.votes_for}, AGAINST={result.votes_against}, Total weight={total_weight}, Participating={participating_weight}", "ERROR")
                     add_log(f"  Requirements: Quorum={quorum_pct:.1f}% (met: {result.quorum_met}), Threshold={threshold_pct:.1f}% (support: {support_pct:.1f}%)", "ERROR")
                 else:
-                    add_log(f"FAILED {prop_id} ({src}→{dst}): No result returned", "ERROR")
+                    add_log(f"FAILED {prop_id} ({src_label}→{dst_label}): No result returned", "ERROR")
             
             last_result = (prop_id, src, dst, tx, result)
         
@@ -403,11 +449,13 @@ with tab_run:
             visited_worlds.add(h.get("from_world"))
             visited_worlds.add(h.get("to_world"))
         visited_worlds_list = sorted(list(visited_worlds))
+        visited_worlds_labels = [format_world_label(wid, worlds_dict) for wid in visited_worlds_list]
+        final_active_label = format_world_label(final_active, worlds_dict)
         
         add_log("=" * 60)
         add_log(f"Simulation complete: {summary} out of {len(proposals)} proposals.")
-        add_log(f"History contains {len(final_history)} transitions. Active world: {final_active}")
-        add_log(f"Visited worlds: {', '.join(visited_worlds_list) if visited_worlds_list else 'None'}")
+        add_log(f"History contains {len(final_history)} transitions. Active world: {final_active_label}")
+        add_log(f"Visited worlds: {', '.join(visited_worlds_labels) if visited_worlds_labels else 'None'}")
         if proposal_sequence == "All 6 proposals (interleaved)" and "w4" not in visited_worlds:
             add_log("⚠️ WARNING: w4 was not visited. The interleaved sequence requires all 8 proposals to reach w4. Did you run all 8 proposals?", "WARNING")
         add_log("=" * 60)
@@ -423,16 +471,71 @@ with tab_run:
 
     st.divider()
     st.subheader("Run Custom Proposal")
+    
+    # Initialize custom proposal log in session state
+    if "custom_proposal_log" not in st.session_state:
+        st.session_state.custom_proposal_log = []
+    if "custom_log_update_counter" not in st.session_state:
+        st.session_state.custom_log_update_counter = 0
+    
+    def add_custom_log(message: str, level: str = "INFO"):
+        """Add a message to the custom proposal log"""
+        timestamp = time.strftime("%H:%M:%S")
+        log_entry = f"[{timestamp}] [{level}] {message}"
+        st.session_state.custom_proposal_log.append(log_entry)
+        st.session_state.custom_log_update_counter += 1
+    
     store, worlds, model = load_worlds_and_valuation(examples_dir)
     world_ids = sorted(worlds.keys())
+    # Create labels with world names for selectboxes
+    from_world_options = {format_world_label(wid, worlds): wid for wid in world_ids}
+    to_world_options = {format_world_label(wid, worlds): wid for wid in world_ids}
     c1, c2, c3 = st.columns(3)
-    from_w = c1.selectbox("From world", world_ids, index=0)
-    to_w = c2.selectbox("To world", [w for w in world_ids if w != from_w], index=0)
+    from_w_label = c1.selectbox("From world", list(from_world_options.keys()), index=0)
+    from_w = from_world_options[from_w_label]
+    # Filter out the selected "from" world from "to" options
+    to_world_options_filtered = {k: v for k, v in to_world_options.items() if v != from_w}
+    to_w_label = c2.selectbox("To world", list(to_world_options_filtered.keys()), index=0)
+    to_w = to_world_options_filtered[to_w_label]
     prop_id_custom = c3.text_input("Proposal ID", value="prop-custom")
+    
     # Note: guaranteed_approval from form is available in this scope
     if st.button("Run Proposal"):
+        # Clear log at start
+        st.session_state.custom_proposal_log = []
+        st.session_state.custom_log_update_counter += 1
+        
+        add_custom_log("=" * 60)
+        add_custom_log("Starting custom proposal")
+        add_custom_log("=" * 60)
+        
+        # Check current active world
+        current_active = read_active().get("active_world", "w1")
+        current_active_label = format_world_label(current_active, worlds)
+        from_w_label_display = format_world_label(from_w, worlds)
+        to_w_label_display = format_world_label(to_w, worlds)
+        
+        add_custom_log(f"Proposal: {prop_id_custom}")
+        add_custom_log(f"Transition: {from_w_label_display} → {to_w_label_display}")
+        add_custom_log(f"Current active world: {current_active_label}")
+        
+        # Check if proposal matches active world
+        if from_w != current_active:
+            add_custom_log(f"⚠️ WARNING: Current active world ({current_active_label}) does not match proposal source ({from_w_label_display}). Proposal may fail or be skipped.", "WARNING")
+        else:
+            add_custom_log(f"✓ Active world matches proposal source ({from_w_label_display})", "SUCCESS")
+        
+        if guaranteed_approval:
+            add_custom_log("Mode: GUARANTEED APPROVAL (bypassing voting)")
+        else:
+            add_custom_log(f"Parameters: Quorum={quorum:.1%}, Threshold={threshold:.1%}, Approval prob={approval_prob:.1%}, Participation prob={participation_prob:.1%}")
+        
         rng = random.Random(int(seed))
         voters = build_voters(int(voter_count))
+        total_weight = sum(v.weight for v in voters.values())
+        add_custom_log(f"Voters: {len(voters)} (total weight: {total_weight})")
+        
+        add_custom_log("Running proposal...")
         tx, result = run_single_proposal(
             examples_dir=examples_dir,
             proposal_id=prop_id_custom,
@@ -446,12 +549,58 @@ with tab_run:
             voters=voters,
             guaranteed_approval=guaranteed_approval,
         )
+        
         if tx is None:
-            st.warning(f"Proposal failed. Quorum={result.quorum_met}")
+            # Proposal failed
+            if result:
+                participating_weight = result.votes_for + result.votes_against
+                participation_pct = (participating_weight / total_weight * 100) if total_weight > 0 else 0
+                support_pct = (result.votes_for / participating_weight * 100) if participating_weight > 0 else 0
+                threshold_pct = float(threshold) * 100
+                quorum_pct = float(quorum) * 100
+                
+                failure_reasons = []
+                if not result.quorum_met:
+                    failure_reasons.append(f"Quorum not met ({participation_pct:.1f}% < {quorum_pct:.1f}%)")
+                if result.quorum_met and support_pct <= threshold_pct:
+                    if support_pct == threshold_pct:
+                        failure_reasons.append(f"Threshold not met ({support_pct:.1f}% = {threshold_pct:.1f}% - tie fails, requires >{threshold_pct:.1f}%)")
+                    else:
+                        failure_reasons.append(f"Threshold not met ({support_pct:.1f}% < {threshold_pct:.1f}%)")
+                
+                reason = " | ".join(failure_reasons) if failure_reasons else "Unknown reason"
+                add_custom_log(f"❌ FAILED: {reason}", "ERROR")
+                add_custom_log(f"  Votes: FOR={result.votes_for}, AGAINST={result.votes_against}, Total weight={total_weight}, Participating={participating_weight}", "ERROR")
+                add_custom_log(f"  Requirements: Quorum={quorum_pct:.1f}% (met: {result.quorum_met}), Threshold={threshold_pct:.1f}% (support: {support_pct:.1f}%)", "ERROR")
+            else:
+                add_custom_log("❌ FAILED: No result returned", "ERROR")
+            add_custom_log("=" * 60)
+            st.warning(f"Proposal failed. Quorum={result.quorum_met if result else 'unknown'}")
         else:
-            st.success(f"TX {tx.tx_id}: {from_w}->{to_w} passed.")
+            # Proposal succeeded
+            new_active = read_active().get("active_world", "w1")
+            new_active_label = format_world_label(new_active, worlds)
+            
+            add_custom_log(f"✅ SUCCEEDED: {from_w_label_display} → {to_w_label_display}", "SUCCESS")
+            if result:
+                participating_weight = result.votes_for + result.votes_against
+                add_custom_log(f"  Votes: FOR={result.votes_for}, AGAINST={result.votes_against}, Participating={participating_weight}")
+                add_custom_log(f"  Transaction ID: {tx.tx_id}")
+            add_custom_log(f"  Active world updated to: {new_active_label}")
+            add_custom_log("=" * 60)
+            st.success(f"TX {tx.tx_id}: {from_w_label_display} → {to_w_label_display} passed.")
+        
         st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
         st.rerun()
+    
+    # Display custom proposal log
+    st.subheader("Custom Proposal Log")
+    if st.session_state.custom_proposal_log:
+        log_text = "\n".join(st.session_state.custom_proposal_log)
+        log_key = f"custom_log_display_{st.session_state.custom_log_update_counter}_{len(st.session_state.custom_proposal_log)}"
+        st.text_area("", value=log_text, height=300, disabled=True, key=log_key, label_visibility="collapsed")
+    else:
+        st.info("(Log will appear here after running a custom proposal)")
 
 
 with tab_graph:
@@ -609,5 +758,51 @@ with tab_data:
     # Use container to force refresh
     history_container = st.empty()
     history_container.json(current_history)
+    
+    # Truth table for valuation.json
+    st.subheader("Truth Table")
+    st.markdown("Tabular representation of **valuation.json**: Shows which propositions are true in each world.")
+    val_path = os.path.join(examples_dir, "valuation.json")
+    if os.path.exists(val_path):
+        # Load valuation
+        with open(val_path, 'r', encoding='utf-8') as f:
+            valuation = json.load(f)
+        
+        # Get all worlds from the graph store
+        store, worlds, model = load_worlds_and_valuation(examples_dir)
+        world_ids = sorted(worlds.keys())
+        
+        # Get all propositions (sorted)
+        propositions = sorted(valuation.keys())
+        
+        # Build truth table data with world names
+        truth_table_data = []
+        for world_id in world_ids:
+            world_label = format_world_label(world_id, worlds)
+            row = {"World": world_label}
+            for prop in propositions:
+                # Check if this proposition is true in this world
+                is_true = world_id in valuation.get(prop, [])
+                row[prop] = "✓" if is_true else "✗"
+            truth_table_data.append(row)
+        
+        # Display as dataframe (Streamlit can handle list of dicts directly)
+        st.dataframe(truth_table_data, width='stretch', use_container_width=True, hide_index=False)
+        
+        # Add explanation
+        with st.expander("Truth table explained"):
+            st.markdown(
+                """
+                - **Rows**: Each world (w1, w2, w3, w4)
+                - **Columns**: Each proposition (p1, p2, p3, p4)
+                - **✓**: Proposition is true in this world
+                - **✗**: Proposition is false in this world
+                
+                This table shows the valuation function V: Prop → P(W), where each proposition 
+                maps to the set of worlds where it is true.
+                """
+            )
+    else:
+        st.info("No valuation.json yet. Initialize the graph to generate the truth table.")
 
 
