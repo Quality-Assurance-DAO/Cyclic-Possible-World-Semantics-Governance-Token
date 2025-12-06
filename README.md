@@ -98,6 +98,37 @@ Notes:
 - Proposals simulate enabling quorum, delegation, council creation, reset, and two reverse moves.
 - Voters: 10 voters with weights 1..10. Default thresholds: quorum 0.5, majority 0.5.
 
+## Understanding Proposal Success and Failure
+
+Proposals can **fail** even when they match the current active world. A proposal fails if:
+
+1. **Quorum not met**: Not enough voting weight participates (participation < quorum threshold)
+2. **Threshold not met**: Even with quorum, not enough participating votes are "for" (support < approval threshold)
+
+### Why Proposals Fail
+
+The simulation uses **random voting** (seedable for reproducibility). Even with high approval probability, some proposals may fail due to random chance. This is expected behavior and reflects real-world governance where proposals don't always pass.
+
+### Adjusting Parameters to Increase Success Rate
+
+To get more proposals to pass:
+
+- **Increase Approval Probability** (default 0.6): Higher chance each voter votes "for"
+- **Lower Approval Threshold** (default 0.5): Requires less support to pass (e.g., 0.4 = 40% support needed)
+- **Lower Quorum** (default 0.5): Requires less participation (e.g., 0.3 = 30% participation needed)
+- **Try Different Seeds**: Different random seeds produce different voting patterns
+
+### Proposal Execution Flow
+
+1. Proposals are processed **sequentially** in the order specified
+2. Each proposal checks if the **current active world** matches its `from_world`
+3. If matched, the proposal runs a vote simulation
+4. If the vote **passes** (quorum + threshold met), the active world transitions to `to_world`
+5. If the vote **fails**, the active world **stays unchanged**
+6. Subsequent proposals that don't match the current active world are **skipped**
+
+**Example**: If prop-004 (w4→w1) fails, the active world remains w4, so prop-005 (w2→w1) and prop-006 (w3→w2) will be skipped because they require w2 and w3 respectively, not w4.
+
 ## Moving to Real Cardano + Arweave
 
 - Arweave
@@ -114,8 +145,10 @@ Security note: Never commit private keys/JWKs to the repo. Use environment varia
 ## Troubleshooting
 
 - Ensure you are in the virtualenv and dependencies are installed.
-- If images don’t appear, ensure you have a non-interactive Matplotlib backend (default works for PNG generation).
+- If images don't appear, ensure you have a non-interactive Matplotlib backend (default works for PNG generation).
 - Re-run `init_graph.py` to regenerate the example worlds and graph summary.
+- **Only seeing 3 proposals succeed?** This is normal if later proposals fail due to voting results. Check the simulation log for detailed failure reasons. Increase approval probability or lower thresholds to increase success rate.
+- **Proposals being skipped?** A proposal is skipped if the current active world doesn't match its `from_world`. This happens when a previous proposal failed, leaving the active world unchanged.
 
 ## License
 

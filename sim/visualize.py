@@ -79,7 +79,11 @@ def draw_timeline(history_path: str, outfile: str) -> None:
     plt.title("Transition Timeline")
     plt.grid(True, alpha=0.3, axis='y')
     plt.legend(loc='upper right')
-    plt.tight_layout()
+    try:
+        plt.tight_layout()
+    except Exception:
+        # If tight_layout fails, use subplots_adjust as fallback
+        plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.15)
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
     plt.savefig(outfile)
     plt.close()
@@ -91,7 +95,11 @@ def graph_png_bytes(G: nx.DiGraph, active_world: str, labels: Dict[str, str]) ->
     node_colors = ["#ffcc00" if n == active_world else "#87ceeb" for n in G.nodes()]
     nx.draw(G, pos, with_labels=False, node_color=node_colors, arrows=True, arrowstyle='-|>')
     nx.draw_networkx_labels(G, pos, labels={n: labels.get(n, n) for n in G.nodes()}, font_size=8)
-    plt.tight_layout()
+    try:
+        plt.tight_layout()
+    except Exception:
+        # If tight_layout fails, use subplots_adjust as fallback
+        plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1)
     buf = BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
@@ -156,7 +164,11 @@ def timeline_png_bytes(history_path: str) -> bytes:
     plt.title("Transition Timeline")
     plt.grid(True, alpha=0.3, axis='y')
     plt.legend(loc='upper right')
-    plt.tight_layout()
+    try:
+        plt.tight_layout()
+    except Exception:
+        # If tight_layout fails, use subplots_adjust as fallback
+        plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.15)
     buf = BytesIO()
     plt.savefig(buf, format='png')
     plt.close()

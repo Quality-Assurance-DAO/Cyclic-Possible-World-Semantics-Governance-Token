@@ -46,6 +46,8 @@ class CardanoSimulator:
     def _write_history(self, history: List[Dict[str, Any]]) -> None:
         with open(self.history_path, 'w', encoding='utf-8') as f:
             json.dump(history, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
 
     def _write_active(self, world_id: str, tx_id: str) -> None:
         active = {
@@ -55,6 +57,8 @@ class CardanoSimulator:
         }
         with open(self.active_path, 'w', encoding='utf-8') as f:
             json.dump(active, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
 
     def submit_transition(
         self,
