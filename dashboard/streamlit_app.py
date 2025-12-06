@@ -170,7 +170,18 @@ with tab_run:
         
         last_result = None
         successful_count = 0
+        skipped_count = 0
+        
         for prop_id, src, dst in proposals:
+            # Check current active world before running proposal
+            current_active = read_active().get("active_world", "w1")
+            
+            # Validate that the proposal's from_world matches the current active world
+            if src != current_active:
+                st.warning(f"Skipping {prop_id} ({src}→{dst}): Current active world is {current_active}, but proposal requires {src}")
+                skipped_count += 1
+                continue
+            
             tx, result = run_single_proposal(
                 examples_dir=examples_dir,
                 proposal_id=prop_id,
@@ -195,7 +206,11 @@ with tab_run:
         
         # Show summary of successful transitions
         final_history = read_history()
-        st.info(f"Simulation complete: {successful_count}/{len(proposals)} proposals succeeded. History now contains {len(final_history)} transitions.")
+        summary_parts = [f"{successful_count} succeeded"]
+        if skipped_count > 0:
+            summary_parts.append(f"{skipped_count} skipped (wrong active world)")
+        summary = ", ".join(summary_parts)
+        st.info(f"Simulation complete: {summary} out of {len(proposals)} proposals. History now contains {len(final_history)} transitions.")
         
         st.session_state.refresh_counter = st.session_state.get("refresh_counter", 0) + 1
         st.rerun()
@@ -288,31 +303,34 @@ with tab_timeline:
         file_mtime = os.path.getmtime(history_path)
     
     # Create comprehensive signature that changes with any history change
-    history_signature = f"{history_count}_{refresh_counter}_{file_mtime}"
-    if history:
-        # Include all proposal IDs and transitions in signature
-        all_props = "_".join([f"{h.get('proposal_id', '')}_{h.get('from_world', '')}_{h.get('to_world', '')}" for h in history])
-        history_signature += f"_{hash(all_props)}"
+    # Include actual history content hash to ensure uniqueness
+    history_content_hash = hash(str(history)) if history else 0
+    history_signature = f"{history_count}_{refresh_counter}_{file_mtime}_{history_content_hash}"
     
     # Also check active world to ensure we refresh when it changes
     active = read_active()
     active_world = active.get("active_world", "w1")
     history_signature += f"_{active_world}"
     
-    # Force Streamlit to recognize this as a new computation
-    _ = history_signature
+    # Force Streamlit to recognize this as a new computation by using signature
+    timeline_key = f"timeline_{history_signature}"
+    _ = timeline_key
     
     # Always read from file and regenerate timeline
     tl_bytes = timeline_png_bytes(history_path)
     
+    # Use empty container to force refresh
+    timeline_container = st.empty()
     if tl_bytes:
         # Display image - Streamlit should regenerate due to signature change
-        st.image(tl_bytes, width='stretch')
+        timeline_container.image(tl_bytes, width='stretch')
     else:
-        st.info("No timeline yet. Run a simulation to generate transitions.")
+        timeline_container.info("No timeline yet. Run a simulation to generate transitions.")
+    
+    # Display dataframe with unique key
     data = history
     if data:
-        st.dataframe(data, width='stretch', hide_index=True)
+        st.dataframe(data, width='stretch', hide_index=True, key=f"timeline_df_{history_signature}")
 
 
 with tab_data:
@@ -342,8 +360,9 @@ with tab_data:
     history_mtime = os.path.getmtime(history_path) if os.path.exists(history_path) else 0
     active_mtime = os.path.getmtime(active_path) if os.path.exists(active_path) else 0
     
-    # Create signature to force refresh
-    data_signature = f"{refresh_counter}_{history_count}_{history_mtime}_{active_mtime}"
+    # Create signature with history content hash to force refresh
+    history_content_hash = hash(str(history)) if history else 0
+    data_signature = f"{refresh_counter}_{history_count}_{history_mtime}_{active_mtime}_{history_content_hash}"
     _ = data_signature
     
     st.subheader("Artifacts")
@@ -368,7 +387,10 @@ with tab_data:
     # Always read fresh from file - force refresh by including in computation
     current_history = read_history()
     # Include history content in signature to force refresh
-    _ = (data_signature, len(current_history), hash(str(current_history)) if current_history else 0)
-    st.json(current_history)
+    history_json_key = f"history_json_{data_signature}_{hash(str(current_history))}"
+    _ = history_json_key
+    # Use container to force refresh
+    history_container = st.empty()
+    history_container.json(current_history)
 
 
