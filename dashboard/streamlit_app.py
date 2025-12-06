@@ -1243,6 +1243,115 @@ with tab_timeline:
     data = history
     if data:
         st.dataframe(data, width='stretch', hide_index=True, key=f"timeline_df_{history_signature}")
+    
+    # Visualizing Voting Results section
+    st.divider()
+    st.subheader("📊 Visualizing Voting Results")
+    
+    if history and PLOTLY_AVAILABLE:
+        # Prepare data for visualizations
+        transition_numbers = []
+        proposal_ids = []
+        from_worlds = []
+        to_worlds = []
+        votes_for_list = []
+        votes_against_list = []
+        participating_weights = []
+        quorum_values = []
+        estimated_total_weights = []
+        
+        for idx, tx in enumerate(history, 1):
+            transition_numbers.append(idx)
+            proposal_ids.append(tx.get("proposal_id", f"TX-{idx}"))
+            from_worlds.append(tx.get("from_world", "?"))
+            to_worlds.append(tx.get("to_world", "?"))
+            votes_for = tx.get("votes_for", 0)
+            votes_against = tx.get("votes_against", 0)
+            votes_for_list.append(votes_for)
+            votes_against_list.append(votes_against)
+            participating_weight = votes_for + votes_against
+            participating_weights.append(participating_weight)
+            quorum = tx.get("quorum", 0.5)
+            quorum_values.append(quorum)
+            # Estimate total_possible_weight from quorum requirement
+            # For successful transitions: participating_weight >= quorum * total_possible_weight
+            # So: total_possible_weight <= participating_weight / quorum
+            # We'll use the minimum estimate
+            estimated_total = int(participating_weight / quorum) if quorum > 0 else participating_weight
+            estimated_total_weights.append(estimated_total)
+        
+        # Vote Breakdown Pie Charts
+        st.markdown("### Vote Breakdown by Transition")
+        st.markdown("For each transition, see the distribution of voting weight: **For**, **Against**, and **Did Not Participate**.")
+        
+        # Create columns for pie charts (2 per row)
+        num_transitions = len(history)
+        if num_transitions > 0:
+            # Calculate number of rows needed (2 charts per row)
+            num_rows = (num_transitions + 1) // 2
+            
+            for row in range(num_rows):
+                cols = st.columns(2)
+                for col_idx in range(2):
+                    tx_idx = row * 2 + col_idx
+                    if tx_idx < num_transitions:
+                        tx = history[tx_idx]
+                        votes_for = votes_for_list[tx_idx]
+                        votes_against = votes_against_list[tx_idx]
+                        estimated_total = estimated_total_weights[tx_idx]
+                        non_participating = max(0, estimated_total - votes_for - votes_against)
+                        
+                        # Create pie chart
+                        labels = ['For', 'Against', 'Did Not Participate']
+                        values = [votes_for, votes_against, non_participating]
+                        colors = ['#28a745', '#dc3545', '#6c757d']  # Green, Red, Gray
+                        
+                        # Only show pie chart if there's data
+                        if sum(values) > 0:
+                            fig_pie = go.Figure(data=[go.Pie(
+                                labels=labels,
+                                values=values,
+                                hole=0.3,
+                                marker_colors=colors,
+                                textinfo='label+percent+value',
+                                texttemplate='%{label}<br>%{value}<br>(%{percent})',
+                                hovertemplate='<b>%{label}</b><br>Weight: %{value}<br>Percentage: %{percent}<extra></extra>',
+                            )])
+                            
+                            proposal_id = proposal_ids[tx_idx]
+                            from_world = from_worlds[tx_idx]
+                            to_world = to_worlds[tx_idx]
+                            
+                            fig_pie.update_layout(
+                                title=f"TX {tx_idx + 1}: {proposal_id}<br>{from_world} → {to_world}",
+                                height=350,
+                                showlegend=True,
+                                margin=dict(t=80, b=20, l=20, r=20),
+                            )
+                            
+                            with cols[col_idx]:
+                                st.plotly_chart(fig_pie, use_container_width=True)
+                                
+                                # Show detailed breakdown
+                                with st.expander(f"Details for TX {tx_idx + 1}"):
+                                    st.markdown(f"**Proposal ID**: {proposal_id}")
+                                    st.markdown(f"**Transition**: {from_world} → {to_world}")
+                                    st.markdown(f"**Votes For**: {votes_for} weight")
+                                    st.markdown(f"**Votes Against**: {votes_against} weight")
+                                    st.markdown(f"**Did Not Participate**: {non_participating} weight (estimated)")
+                                    st.markdown(f"**Total Weight**: {estimated_total} (estimated from quorum requirement)")
+                                    st.markdown(f"**Quorum**: {quorum_values[tx_idx]:.1%}")
+                                    participation_pct = ((votes_for + votes_against) / estimated_total * 100) if estimated_total > 0 else 0
+                                    st.markdown(f"**Participation**: {participation_pct:.1f}%")
+                                    support_pct = (votes_for / (votes_for + votes_against) * 100) if (votes_for + votes_against) > 0 else 0
+                                    st.markdown(f"**Support**: {support_pct:.1f}%")
+            
+            st.info("💡 **Note**: 'Did Not Participate' weight is estimated from the quorum requirement. The exact total voting weight is not stored in the transaction history.")
+        
+    elif history and not PLOTLY_AVAILABLE:
+        st.warning("⚠️ Plotly is not installed. Install it with: `pip install plotly` to enable interactive voting visualizations.")
+    else:
+        st.info("No voting data to visualize yet. Run a simulation to generate transitions.")
 
 
 with tab_data:
