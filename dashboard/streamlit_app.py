@@ -233,15 +233,6 @@ with tab_about:
 
 
 with tab_overview:
-    st.header("📊 Dashboard Overview")
-    
-    st.markdown(
-        """
-        Welcome! This is your **guided tour** of the governance simulation dashboard. 
-        Let's start by understanding the two most important concepts: the **Active World** and **Transition Count**.
-        """
-    )
-    
     # Load data for Current State Summary and Quick Actions
     active = read_active()
     history = read_history()
@@ -257,20 +248,21 @@ with tab_overview:
     
     transition_count = len(history)
     
-    st.divider()
-    
     # Show current state summary
     st.subheader("📋 Current State Summary")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown(f"**Active World**\n\n{active_world_label}")
+        st.markdown("**Active World**")
+        st.markdown(f'<p style="font-size: 24px; font-weight: bold;">{active_world_label}</p>', unsafe_allow_html=True)
     
     with col2:
-        st.markdown(f"**Total Transitions**\n\n{transition_count}")
+        st.markdown("**Total Transitions**")
+        st.markdown(f'<p style="font-size: 24px; font-weight: bold;">{transition_count}</p>', unsafe_allow_html=True)
     
     with col3:
+        st.markdown("**Last Transition**")
         if transition_count > 0:
             last_transition = history[-1]
             from_world = last_transition.get("from_world", "?")
@@ -281,9 +273,9 @@ with tab_overview:
             except:
                 from_label = from_world
                 to_label = to_world
-            st.markdown(f"**Last Transition**\n\n{from_label} → {to_label}")
+            st.markdown(f'<p style="font-size: 24px; font-weight: bold;">{from_label} → {to_label}</p>', unsafe_allow_html=True)
         else:
-            st.markdown("**Last Transition**\n\nNone yet")
+            st.markdown('<p style="font-size: 24px; font-weight: bold;">None yet</p>', unsafe_allow_html=True)
     
     st.divider()
     
@@ -314,6 +306,18 @@ with tab_overview:
     
     with col3:
         st.markdown("**Next Steps:**\n\n1. Go to **Configure & Run** to run a simulation\n2. Check **Graph** tab to see the visual representation\n3. View **Timeline** to see transition history")
+    
+    st.divider()
+    
+    # Dashboard Overview header moved here
+    st.header("📊 Dashboard Overview")
+    
+    st.markdown(
+        """
+        Welcome! This is your **guided tour** of the governance simulation dashboard. 
+        Let's start by understanding the two most important concepts: the **Active World** and **Transition Count**.
+        """
+    )
     
     st.divider()
     
